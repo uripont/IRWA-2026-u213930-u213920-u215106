@@ -57,6 +57,23 @@ notebook produces the numbers and figures of its report.
 |---|---|---|
 | 1. Text processing and analysis | `part_1.ipynb` | `text.py` (pre-processing), `corpus.py` (product records) |
 | 2. Indexing and evaluation | `part_2.ipynb` | `index.py` (inverted index, AND matching), `ranking.py` (TF-IDF), `evaluation.py` (metrics) |
+| 3. Ranking and filtering | `part_3.ipynb` | `ranking.py` (TF-IDF baseline), `bm25.py`, `custom_score.py`, `word2vec.py` |
+
+### Part 3 work split
+
+| Workstream | Code | Notebook and report sections |
+|---|---|---|
+| TF-IDF baseline and BM25 | `ranking.py`, `bm25.py` | 1, 2.1, 2.2 and the lexical comparison in 4 |
+| Custom score | `custom_score.py` | 2.3 and the custom-score comparison in 4 |
+| Word2Vec | `word2vec.py` | 3, the Word2Vec comparison in 4, and 5 |
+| Integration and write-up | `notebooks/part_3.ipynb`, `reports/part-3/main.tex` | Assemble the comparison in 4 and wrap up in 6 |
+
+The new scorer functions are stubs. Use `build_terms` and `match` with the
+existing search engine to prepare the same candidate set for each scorer.
+Each scorer returns scores keyed by product ID. Sort by descending score,
+then by product ID, before taking the top 20.
+
+## Package usage
 
 The package can also be used directly, for example to search and evaluate
 one query:

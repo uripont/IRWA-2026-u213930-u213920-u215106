@@ -1,0 +1,54 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+
+\title{Urban Outfinders\\[0.3em]\large Part 3: Ranking \& Filtering}
+\author{Marc Mallol\and Èric Dürr\and Oriol Pont}
+\date{Information Retrieval and Web Analytics, 2026}
+
+\begin{document}
+\maketitle
+
+\section{Retrieval setup}
+% Introduce the catalogue, searchable fields, preprocessing and the five Part 2
+% queries. Explain AND matching, shared candidates and ties broken by product ID.
+
+\section{Lexical and custom ranking}
+\subsection{TF-IDF and cosine similarity}
+% Summarize the Part 2 baseline and record its settings.
+
+\subsection{BM25}
+% Give the formula, IDF convention, k1 and b, and document length definition.
+
+\subsection{Custom score}
+% Justify the formula and feature choices, scaling, missing values and trade-offs.
+
+\section{Word2Vec and cosine similarity}
+\subsection{Text vectors}
+% Describe the model, tokenization, averaging, out-of-vocabulary terms and
+% zero-vector handling.
+
+\subsection{Top 20 results per query}
+% Insert a ranked table for each Part 2 test query. Include product IDs, titles
+% and scores. Report the candidate count when fewer than 20 products match.
+
+\section{Ranking comparison}
+% Explain TF-IDF and BM25 rank changes and the pros and cons of both.
+% Discuss the effects and trade-offs of the custom score and Word2Vec.
+% If reporting metrics from Part 2 labels, explain the judgement pool and
+% report coverage across rankers.
+
+\section{Alternative text representations}
+% Propose a representation and justify its pros and cons relative to averaged
+% Word2Vec. Consider Doc2Vec and sentence embeddings.
+
+\section{Conclusion}
+% Summarize the observed ranking differences and which methods suited the queries.
+
+\end{document}
