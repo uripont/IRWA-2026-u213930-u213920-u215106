@@ -3,7 +3,7 @@
 A search engine for ~28k fashion products from an Indian e-commerce site.
 Queries are matched against product titles, descriptions and attributes,
 then ranked by TF-IDF, BM25, a custom score that blends text relevance
-with rating, price and discount, or word2vec embeddings. A Flask web app
+with rating, discount and stock, or word2vec embeddings. A Flask web app
 serves the results, summarises them with an LLM, and tracks how people
 use the search.
 

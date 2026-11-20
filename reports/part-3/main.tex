@@ -7,6 +7,8 @@
 \usepackage{microtype}
 \usepackage{booktabs}
 \usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+\usepackage[nameinlink]{cleveref}
 
 \title{Urban Outfinders\\[0.3em]\large Part 3: Ranking \& Filtering}
 \author{Marc Mallol\and Èric Dürr\and Oriol Pont}
@@ -27,7 +29,75 @@
 % Give the formula, IDF convention, k1 and b, and document length definition.
 
 \subsection{Custom score}
-% Justify the formula and feature choices, scaling, missing values and trade-offs.
+\label{sec:custom}
+
+TF-IDF and BM25 only look at the words of a product. A shopper also cares
+about whether the product is what they named, whether other buyers liked it,
+whether it is a good deal and whether they can buy it at all. Our score adds
+these signals on top of BM25, in \path{custom_score.py}:
+\[
+  \mathit{score} =
+  \bigl(0.6\,\mathit{text} + 0.4\,\mathit{name}\bigr)
+  \cdot \bigl(0.8 + 0.15\,\mathit{rating} + 0.05\,\mathit{discount}\bigr)
+  \cdot s,
+\]
+where $s$ is 0.5 for a product that is out of stock and 1 otherwise. Every
+component is scaled to lie between 0 and 1:
+
+\begin{itemize}
+  \item $\mathit{text}$ is the product's BM25 score divided by the best BM25
+  score among the candidates. BM25 scores have no fixed scale (they grow with
+  the number and rarity of the query terms), so dividing by the best one makes
+  the weights mean the same thing for every query.
+  \item $\mathit{name}$ is the share of distinct query terms that appear in the
+  product's title or brand. Every candidate contains every query term
+  somewhere, but where the term appears matters. For \emph{slim fit jogger
+  men}, 26 of the 33 candidates only have one query word in their title (they
+  mention joggers or slim fit in the description or details), and they are
+  mostly track pants, t-shirts and boxers.
+  \item $\mathit{rating}$ is the average rating mapped from 1 to 5 onto 0 to 1.
+  \item $\mathit{discount}$ is the discount as a fraction (0.53 for 53\% off).
+\end{itemize}
+
+\paragraph{Why multiply.} The first factor says how well the text matches and
+the second how good the offer is. Because the offer factor only goes from 0.8
+(lowest rating, no discount) to 1 (five stars, full discount), it can change a
+score by at most 20\%. A well-rated product with a weak text match therefore
+cannot pass a product that matches the query clearly better, while products
+whose text matches equally well (a very common case, since many listings share
+almost the same description) are reordered by rating and, a little, by
+discount. Adding the components instead would let a high rating make up for a
+poor match. Rating gets three times the weight of discount because a rating
+says something about the product itself, while most products are discounted
+anyway (the median discount is 53\%) and a discount is partly a pricing
+strategy of the seller.
+
+\paragraph{Out of stock.} A product the user cannot buy is a poor result even
+when its text is perfect, so we halve its score. We keep it in the results
+(rather than removing it) because AND matching already decides what is
+returned, and the ranking should only decide the order.
+
+\paragraph{Missing values.} Ratings are missing for 8.1\% of the catalogue
+(2.1\% of the candidates of our five queries) and discounts for 3.0\% (1.7\%).
+A missing rating gets the catalogue's average of 3.63, so a product with no
+reviews is neither rewarded nor punished. A missing discount counts as no
+discount, since the product page shows no reduced price.
+
+\paragraph{What we left out.} We do not use the price. Whether a cheaper
+product is better depends on the user (someone looking for a premium jacket
+does not want the cheapest one first), and the discount already captures the
+idea of a good deal. We also do not use the number of ratings, which the
+dataset does not have. That is the main weakness of the rating component,
+since a single five-star review counts the same as hundreds of them.
+
+\paragraph{Pros and cons.} The score keeps what BM25 does well and adds
+signals the text cannot see: it prefers products named after the query, better
+rated products and products in stock. Its weights, however, are chosen by hand
+from what seemed reasonable and from the five test queries, not learnt from
+user behaviour, and they would need tuning with click data (which the web app
+of Part~4 will start to collect). It can also make a ranking look worse on our
+labels without being worse, because it brings up products that were never
+judged (\cref{sec:custom-comparison}).
 
 \section{Word2Vec and cosine similarity}
 \subsection{Text vectors}
@@ -40,9 +110,89 @@
 
 \section{Ranking comparison}
 % Explain TF-IDF and BM25 rank changes and the pros and cons of both.
-% Discuss the effects and trade-offs of the custom score and Word2Vec.
+% Discuss the effects and trade-offs of Word2Vec.
 % If reporting metrics from Part 2 labels, explain the judgement pool and
 % report coverage across rankers.
+
+\subsection{Custom score against BM25}
+\label{sec:custom-comparison}
+
+Since the custom score starts from BM25, the useful question is what its extra
+components change. \Cref{tab:custom-ablation} switches them off one at a time,
+averaged over the five test queries. On the Part~2 labels the custom score is
+as good as BM25 (AP 0.988 against 0.990, the same NDCG@20 of 0.998), and the
+small differences are within what a single product moving can cause. Its
+effect shows in the other columns instead: it keeps out-of-stock products
+almost entirely out of the top 20 (0.2 per query, against 1.6 for BM25) and
+raises the average rating of the top 20 from 3.72 to 4.00, while keeping 14 of
+BM25's top 20 products on average.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{The custom score with one component switched off at a time, averaged
+  over the five test queries. Judged is the share of the top 20 that has a
+  Part~2 label. The last row orders by BM25 alone.}
+  \label{tab:custom-ablation}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Variant & Judged & BM25 overlap & Out of stock & Rating & AP & NDCG@20 \\
+    \midrule
+    Custom score & 0.70 & 14.2 & 0.2 & 4.00 & 0.988 & 0.998 \\
+    Without name & 0.70 & 15.0 & 0.2 & 3.98 & 0.984 & 0.997 \\
+    Without offer factor & 0.75 & 17.2 & 0.2 & 3.81 & 0.986 & 0.998 \\
+    Without stock penalty & 0.71 & 14.8 & 2.0 & 3.95 & 0.995 & 0.999 \\
+    BM25 alone & 0.76 & 20.0 & 1.6 & 3.72 & 0.990 & 0.998 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\Cref{tab:custom-q5} shows the clearest case, query~5 (\emph{slim fit jogger
+men}). The six \emph{Jogger Fit} jeans, whose titles hold three of the four
+query terms, take the first six places, including one that BM25 put 11th. The
+track pants and t-shirts that only mention joggers outside their title come next.
+BM25's first result, a pair of slim fit trousers, is out of stock and drops to
+12th (it is still relevant, which is why AP does not improve). The name
+component does not tell the track pants from the t-shirts, though, since both
+have only \emph{men} in their title, and the two t-shirts stay in the top 10.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \caption{Top 12 custom-score results of query~5 with their BM25 rank (the
+  notebook lists their pids). Name is the share of query terms in the title
+  or brand, and relevance comes from the Part~2 labels.}
+  \label{tab:custom-q5}
+  \begin{tabular}{rlrrrcr}
+    \toprule
+    Rank & Title & Score & BM25 rank & Name & In stock & Relevant \\
+    \midrule
+    1 & Jogger Fit Men Grey Jeans & 0.754 & 4 & 0.75 & yes & 1 \\
+    2 & Jogger Fit Men Grey Jeans & 0.753 & 2 & 0.75 & yes & 1 \\
+    3 & Jogger Fit Men Black Jeans & 0.750 & 3 & 0.75 & yes & 1 \\
+    4 & Jogger Fit Men Blue Jeans & 0.750 & 5 & 0.75 & yes & 1 \\
+    5 & Jogger Fit Men Grey Jeans & 0.743 & 6 & 0.75 & yes & 1 \\
+    6 & Jogger Fit Men Black Jeans & 0.623 & 11 & 0.75 & yes & 1 \\
+    7 & Solid Men Black Track Pants & 0.536 & 7 & 0.25 & yes & 1 \\
+    8 & Washed Men Grey Track Pants & 0.534 & 8 & 0.25 & yes & 1 \\
+    9 & Printed Men Round Neck Grey T-Shirt & 0.518 & 10 & 0.25 & yes & 0 \\
+    10 & Solid Men Round Neck Grey T-Shirt & 0.515 & 9 & 0.25 & yes & 0 \\
+    11 & Solid Men Black Track Pants & 0.427 & 12 & 0.25 & yes & 1 \\
+    12 & Slim Fit Men Black Cotton Blend Trousers & 0.412 & 1 & 0.75 & no & 1 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The metrics should be read with care for two queries. Our labels cover the
+TF-IDF top 40, and the custom score moves further away from TF-IDF than BM25
+does (it shares only 2 of the TF-IDF top 20 for query~4 and 5 for query~6).
+Only 15\% of its query~4 top 20 and 35\% of its query~6 top 20 is judged, so
+for those two queries the metrics only describe the few judged products
+(polo t-shirts that all look alike), not the ranking as a whole. On query~7
+the custom score also lifts a plain women's jacket that is not denim from
+35th to 26th place, which lowers AP slightly (0.974 against 1.000) but stays
+outside the top 20.
 
 \section{Alternative text representations}
 % Propose a representation and justify its pros and cons relative to averaged
