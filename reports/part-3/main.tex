@@ -17,16 +17,48 @@
 \begin{document}
 \maketitle
 
+\section{Introduction}
+
+In this part we add three new ways of ranking the results of our search engine, on top of the TF-IDF ranking of Part~2: BM25, a custom score of our own that also uses the rating, the discount and the stock of each product, and Word2Vec with cosine similarity. All of them rank the same products, the ones that match every query word, so we can compare how each one orders the results on the five test queries of Part~2.
+
+The code is at \url{https://github.com/uripont/IRWA-2026-u213930-u213920-u215106}, tag \texttt{IRWA-2026-part-3}. The new rankers are in \path{bm25.py}, \path{custom_score.py} and \path{word2vec.py} inside the \path{fashion_search} package, and \path{notebooks/part_3.ipynb} runs them and produces every number and table in this report. The README explains how to reproduce them.
+
 \section{Retrieval setup}
 % Introduce the catalogue, searchable fields, preprocessing and the five Part 2
 % queries. Explain AND matching, shared candidates and ties broken by product ID.
+
+Following Part~2, we use the Urban Outfinders catalogue and we apply the same preprocessing to the product text and the five test queries.
+Every query uses AND matching, so only products that contain all query words are present in the retrieval list.
+It is important to note that all the rankers score the same candidates, and ties are broken by product ID, which is unique and consistent across rankers.
+
 
 \section{Lexical and custom ranking}
 \subsection{TF-IDF and cosine similarity}
 % Summarize the Part 2 baseline and record its settings.
 
+For the TF-IDF baseline we use the exact same settings as in Part 2, with the same preprocessing and cosine similarity to rank the candidates.
+
+Each term $t$ of a product or a query gets the weight
+\[
+  w_t = \left(1 + \log \mathit{tf}_t\right) \cdot \log \frac{N}{\mathit{df}_t},
+\]
+where $\mathit{tf}_t$ is the term frequency of $t$ in the product or query, $N$ is the number of products in the catalogue and $\mathit{df}_t$ is the number of products that contain $t$.
+
+
 \subsection{BM25}
 % Give the formula, IDF convention, k1 and b, and document length definition.
+BM25 is also a ranking function, but it is more sophisticated than TF-IDF. It uses the term frequency and inverse document frequency as well, but the term frequency saturates, and the length of the document is compared with the average length. The formula for BM25 is as follows:
+\[
+  \mathit{score}(q,d) = \sum_{t \in q} \mathit{idf}(t) \cdot
+  \frac{\mathit{tf}(t,d) \cdot (k_1 + 1)}{\mathit{tf}(t,d) + k_1 \cdot (1 - b + b \cdot |d| / \mathit{avgdl})},
+\]
+where $q$ is the query, $d$ is the document, $\mathit{tf}(t,d)$ is the term frequency of term $t$ in document $d$, $|d|$ is the length of document $d$, $\mathit{avgdl}$ is the average document length in the collection, and $k_1$ and $b$ are parameters that control the influence of term frequency and document length, respectively.
+
+We use the usual default values, $k_1 = 1.2$ and $b = 0.75$, and we did not tune them. The length of a product is its number of indexed terms (from its title, description, product details and brand), which is 46.1 on average and goes from 5 to 571. For the IDF we use
+\[
+  \mathit{idf}(t) = \log\left(1 + \frac{N - \mathit{df}_t + 0.5}{\mathit{df}_t + 0.5}\right).
+\]
+Without the 1 inside the logarithm, a term that appears in more than half of the products would get a negative IDF, and products that contain it would get a lower score. This happens in our catalogue, since \emph{wear} appears in 20,800 of the 28,080 products. It is important to note that with this formula the IDF of BM25 is almost the same as the one of TF-IDF (0.300 for \emph{wear} and 3.577 for \emph{kurta} in both), so the differences between the two rankings come from the saturation of the term frequency and the length normalisation, not from the IDF.
 
 \subsection{Custom score}
 \label{sec:custom}
@@ -104,15 +136,256 @@ judged (\cref{sec:custom-comparison}).
 % Describe the model, tokenization, averaging, out-of-vocabulary terms and
 % zero-vector handling.
 
+
+Text vectors are trained on our own catalogue, not pre-trained, because they need the same stemmed
+terms as the index, so that every query term has a vector.
+
+
+The model is trained with the Gensim library, using 100 dimensions, a window size of 5, the skip-gram architecture, a minimum count of 2
+and 10 epochs, which gives a vocabulary of 4,971 of the 6,884 indexed terms.
+
+
+The average of the word vectors of the query and the product is used to represent them, and
+the cosine similarity is used to rank candidates. Unknown terms are skipped. If there is not a single known term,
+the vector is 0, so the cosine similarity is 0 and the product is ranked below every product with a positive similarity.
+
+For reproducibility, we used a fixed seed, one worker, and a fixed hash function.
+
+The most interesting finding we encountered is that kurta has sensible neighbours (churidar, pyajama),
+but puma and jogger have noisy ones (formstrip, load, bindass). The catalogue is too small a corpus.
+We will discuss it further in the conclusion section.
+
 \subsection{Top 20 results per query}
-% Insert a ranked table for each Part 2 test query. Include product IDs, titles
-% and scores. Report the candidate count when fewer than 20 products match.
+  % Insert a ranked table for each Part 2 test query. Include product IDs, titles
+  % and scores. Report the candidate count when fewer than 20 products match.
+
+\Cref{tab:w2v-q3,tab:w2v-q4,tab:w2v-q5,tab:w2v-q6,tab:w2v-q7} show the Word2Vec top 20 for each query. All queries have at least 20 candidates (from 33 to 673), so every list is full, and the
+label column uses the Part~2 labels. Some products are unjudged, marked with --. This is due to the fact
+that the labels come from the TF-IDF top 40, and Word2Vec moves far from TF-IDF for the broad queries, so Q4 and Q6 have 15 unjudged products each. Q3, Q5 and Q7 are fully judged.
+The scores are close together (for Q3 they go from 0.914 to 0.856), which is why small differences decide the order.
+
+Q3 has all 20 products relevant. Q5 has only 10 relevant products out of 20, with two t-shirts in 2nd and 3rd place and five boxers from 14th to 18th, as averaging blurs the one word that matters (jogger).
+Q7 has 18 relevant products, and the two plain women's jackets that are not denim come 18th and 20th. In Q4 and Q6 all 5 judged products are relevant, but we cannot say much about the 15 unjudged ones.
+
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Word2Vec top 20 for query~3, \emph{women printed kurta cotton} (40 candidates). Label is
+  the Part~2 relevance label, or -- when the product was not judged.}
+  \label{tab:w2v-q3}
+  \begin{tabular}{rlp{7.2cm}rc}
+    \toprule
+    Rank & Product ID & Title & Score & Label \\
+    \midrule
+    1 & \texttt{KTAFWKJYFQBAAAQC} & Women Polka Print Cotton Blend A-line Kurta (Green) & 0.914 & 1 \\
+    2 & \texttt{KTAFZCH5954HZSWJ} & Women Printed Cotton Linen Blend Straight Kurta (White) & 0.910 & 1 \\
+    3 & \texttt{KTAFZCH5BCNAFZJ6} & Women Printed Cotton Linen Blend Straight Kurta (White) & 0.909 & 1 \\
+    4 & \texttt{KTAFWKJYBGSFZHHR} & Women Polka Print Cotton Blend A-line Kurta (Light Blue) & 0.909 & 1 \\
+    5 & \texttt{KTAFZCK5RGNECHHH} & Women Printed Cotton Linen Blend Straight Kurta (Blue) & 0.907 & 1 \\
+    6 & \texttt{KTAFZCK5XEZCZXF8} & Women Printed Cotton Linen Blend Straight Kurta (Beige) & 0.906 & 1 \\
+    7 & \texttt{KTAFZCK5DPNRZXHZ} & Women Printed Cotton Linen Blend Straight Kurta (Beige) & 0.905 & 1 \\
+    8 & \texttt{KTAF7YABEAXUHWGF} & Women Printed Cotton Silk Straight Kurta (Beige) & 0.903 & 1 \\
+    9 & \texttt{KTAFZJX6ACH2QQ2S} & Women Self Design Cotton Linen Blend, Cotton Blend Straight Kurta (Pink) & 0.902 & 1 \\
+    10 & \texttt{KTAFTQVJG6MZJYMS} & Women Printed Pure Cotton Straight Kurta (Brown) & 0.871 & 1 \\
+    11 & \texttt{KTAFUTJENTBADJCJ} & Women Printed Pure Cotton Straight Kurta (White) & 0.869 & 1 \\
+    12 & \texttt{KTAFTQVJ4Z9GK5KZ} & Women Printed Pure Cotton Straight Kurta (Dark Blue) & 0.867 & 1 \\
+    13 & \texttt{KTAFD3ZMEMREHQHS} & Women Printed Cotton Blend Straight Kurta (Orange) & 0.862 & 1 \\
+    14 & \texttt{KTAFD3ZMPXPC3GE4} & Women Printed Cotton Blend Straight Kurta (Orange) & 0.862 & 1 \\
+    15 & \texttt{KTAFD3ZMWMWFHWHH} & Women Printed Cotton Blend Straight Kurta (Orange) & 0.862 & 1 \\
+    16 & \texttt{KTAFD3ZMZSMMHB5C} & Women Printed Cotton Blend Straight Kurta (Orange) & 0.862 & 1 \\
+    17 & \texttt{KTAFDVG4YZBS44WT} & Women Printed Cotton Blend Straight Kurta (Blue, Orange) & 0.860 & 1 \\
+    18 & \texttt{KTAFTQVJ7UUBRAB5} & Women Printed Pure Cotton Straight Kurta (Light Blue) & 0.860 & 1 \\
+    19 & \texttt{FABFWN82HVT5KAH2} & Cotton Printed Kurta Fabric (Unstitched) & 0.859 & 1 \\
+    20 & \texttt{ETHFY7FBXY6ZDTKN} & Women Kurta and Pyjama Set Pure Cotton & 0.856 & 1 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Word2Vec top 20 for query~4, \emph{men polo tshirt regular fit} (673 candidates). Label is
+  the Part~2 relevance label, or -- when the product was not judged.}
+  \label{tab:w2v-q4}
+  \begin{tabular}{rlp{7.2cm}rc}
+    \toprule
+    Rank & Product ID & Title & Score & Label \\
+    \midrule
+    1 & \texttt{TSHFJRNEGHVRHYUW} & Solid Men Polo Neck Red T-Shirt & 0.946 & -- \\
+    2 & \texttt{TSHFSYNVFZXHACCS} & Solid Men Polo Neck Blue T-Shirt & 0.945 & -- \\
+    3 & \texttt{TSHFHF38G2NMSNPW} & Printed Men Polo Neck Grey T-Shirt & 0.945 & -- \\
+    4 & \texttt{TSHFSYNVCTGQGBYM} & Striped Men Polo Neck Blue T-Shirt & 0.945 & -- \\
+    5 & \texttt{TSHFSYNV4SCGBKNB} & Printed Men Polo Neck Maroon T-Shirt & 0.945 & -- \\
+    6 & \texttt{TSHFSYNVSY8SHDM6} & Solid Men Polo Neck Blue T-Shirt & 0.945 & -- \\
+    7 & \texttt{TSHFJRJFWWQNCR9J} & Solid Men Polo Neck Black T-Shirt & 0.945 & 1 \\
+    8 & \texttt{TSHFJRHKZK89DWNR} & Solid Men Polo Neck Black T-Shirt & 0.944 & -- \\
+    9 & \texttt{TSHFSYNVFHH5JWRG} & Solid Men Polo Neck Black T-Shirt & 0.944 & -- \\
+    10 & \texttt{TSHFWAZQPWVT4RHP} & Solid Men Polo Neck Blue T-Shirt & 0.944 & -- \\
+    11 & \texttt{TSHFSYNVHNMJ9HY7} & Solid Men Polo Neck Blue T-Shirt & 0.944 & 1 \\
+    12 & \texttt{TSHFFWR5QCKMM74E} & Solid Men Polo Neck Green, Blue T-Shirt (Pack of 2) & 0.944 & 1 \\
+    13 & \texttt{TSHFJRHZGBJF7JVZ} & Solid Men Polo Neck Grey T-Shirt & 0.944 & -- \\
+    14 & \texttt{TSHFFWR5RGN7DTUC} & Solid Men Polo Neck Green, Grey T-Shirt (Pack of 2) & 0.944 & 1 \\
+    15 & \texttt{TSHFHJFC9MY2WFRU} & Printed Men Polo Neck Multicolor T-Shirt & 0.944 & 1 \\
+    16 & \texttt{TSHFSYNV4XUAG2GB} & Solid Men Polo Neck Black T-Shirt & 0.943 & -- \\
+    17 & \texttt{TSHFSYNVZSAHHHJY} & Striped Men Polo Neck Multicolor T-Shirt & 0.943 & -- \\
+    18 & \texttt{TSHFWAZQXGCHUETH} & Solid Men Polo Neck Green T-Shirt & 0.943 & -- \\
+    19 & \texttt{TSHFWAZQBRCM6VDX} & Solid Men Polo Neck Blue T-Shirt & 0.943 & -- \\
+    20 & \texttt{TSHFSYNVHX9QUHZY} & Striped Men Polo Neck Multicolor T-Shirt & 0.942 & -- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Word2Vec top 20 for query~5, \emph{slim fit jogger men} (33 candidates). Label is
+  the Part~2 relevance label, or -- when the product was not judged.}
+  \label{tab:w2v-q5}
+  \begin{tabular}{rlp{7.2cm}rc}
+    \toprule
+    Rank & Product ID & Title & Score & Label \\
+    \midrule
+    1 & \texttt{TROFWCXHHFRTGFQ4} & Slim Fit Men Black Cotton Blend Trousers & 0.864 & 1 \\
+    2 & \texttt{TSHFM75SG4EYKDFF} & Solid Men Round Neck Grey T-Shirt & 0.830 & 0 \\
+    3 & \texttt{TSHFDGRRHRSHFZVW} & Printed Men Round Neck Grey T-Shirt & 0.826 & 0 \\
+    4 & \texttt{JEAFUZXTN3KBGPMS} & Jogger Fit Men Black Jeans & 0.800 & 1 \\
+    5 & \texttt{JEAFUZXZHHXDFFHH} & Jogger Fit Men Grey Jeans & 0.799 & 1 \\
+    6 & \texttt{JEAFUZXS49NSRFQV} & Jogger Fit Men Grey Jeans & 0.796 & 1 \\
+    7 & \texttt{JEAFUZXTZCYTZZ8M} & Jogger Fit Men Grey Jeans & 0.796 & 1 \\
+    8 & \texttt{JEAFUZXUGWXHUF5F} & Jogger Fit Men Blue Jeans & 0.796 & 1 \\
+    9 & \texttt{TKPFGZYRWXZZZAVG} & Solid Men Black Track Pants & 0.778 & 1 \\
+    10 & \texttt{TSHFGYGHGZQZ85WU} & Printed Men Round Neck Blue T-Shirt & 0.773 & 0 \\
+    11 & \texttt{TSHFGZWMYXXYWQPY} & Printed Men Round Neck Dark Green T-Shirt & 0.772 & 0 \\
+    12 & \texttt{TSHFGG5TSASGS3EV} & Printed Men Round Neck Red, Black T-Shirt & 0.765 & 0 \\
+    13 & \texttt{TKPFPEYWQMGZJX4T} & Washed Men Grey Track Pants & 0.765 & 1 \\
+    14 & \texttt{BXRFGYRYGUURZGDG} & Printed Men Boxer (Pack of 1) & 0.760 & 0 \\
+    15 & \texttt{BXRFGYQTPZNHEWFD} & Printed Men Boxer (Pack of 1) & 0.759 & 0 \\
+    16 & \texttt{BXRFGYRYUXNNA2Z9} & Printed Men Boxer (Pack of 1) & 0.758 & 0 \\
+    17 & \texttt{BXRFGYUGJCWWZ7UG} & Printed Men Boxer (Pack of 1) & 0.756 & 0 \\
+    18 & \texttt{BXRFGYQUZH5DCABH} & Printed Men Boxer (Pack of 1) & 0.754 & 0 \\
+    19 & \texttt{TKPFWW2E5QWD9HQT} & Solid Men Black Track Pants & 0.731 & 1 \\
+    20 & \texttt{JEAFCXFZ4P6KE7Y2} & Jogger Fit Men Black Jeans & 0.716 & 1 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Word2Vec top 20 for query~6, \emph{puma men tshirt} (165 candidates). Label is
+  the Part~2 relevance label, or -- when the product was not judged.}
+  \label{tab:w2v-q6}
+  \begin{tabular}{rlp{7.2cm}rc}
+    \toprule
+    Rank & Product ID & Title & Score & Label \\
+    \midrule
+    1 & \texttt{TSHFHB3MHUHP6PZR} & Solid Men Round Neck Orange T-Shirt & 0.867 & -- \\
+    2 & \texttt{TSHFUY8GDJGUGVD5} & Printed Men Round Neck Red T-Shirt & 0.866 & -- \\
+    3 & \texttt{TSHFUY8H8G82HTRX} & Printed Men Round Neck Red T-Shirt & 0.863 & -- \\
+    4 & \texttt{TSHFUY8GGR6R8MFH} & Printed Men Round Neck Black T-Shirt & 0.861 & -- \\
+    5 & \texttt{TSHFGQJJPA98GCR7} & Printed Men Round Neck Black T-Shirt & 0.856 & 1 \\
+    6 & \texttt{TSHFZBYXQAWWCFFF} & Printed Men Round Neck Blue T-Shirt & 0.854 & -- \\
+    7 & \texttt{TSHFUY8G9UJK8JZF} & Printed Men Round Neck Black T-Shirt & 0.853 & -- \\
+    8 & \texttt{TSHFUY8JCGWK9HGJ} & Printed Men Round Neck Grey T-Shirt & 0.850 & -- \\
+    9 & \texttt{TSHFGQKHKWGJZM2N} & Solid Men Round Neck Black T-Shirt & 0.849 & 1 \\
+    10 & \texttt{TSHFUY8HYWXEUPSN} & Graphic Print Men Round Neck Black T-Shirt & 0.849 & -- \\
+    11 & \texttt{TSHFUY8GAZRJUANG} & Graphic Print Men Round Neck Black T-Shirt & 0.848 & -- \\
+    12 & \texttt{TSHFPYXAYEHK4NYW} & Printed Men Round Neck Blue T-Shirt & 0.847 & -- \\
+    13 & \texttt{TSHFRAM2HTDNTHTZ} & Printed Men Round Neck Maroon T-Shirt & 0.846 & 1 \\
+    14 & \texttt{TSHFUY8HJRYPVNGW} & Graphic Print Men Round Neck Orange T-Shirt & 0.846 & -- \\
+    15 & \texttt{TSHFRAM2RYHGZ5ZH} & Graphic Print Men Round Neck Brown T-Shirt & 0.846 & 1 \\
+    16 & \texttt{TSHFGQKMAPDWGJBT} & Graphic Print Men Round Neck Dark Blue T-Shirt & 0.845 & -- \\
+    17 & \texttt{TSHFGQGS5XGT4GWJ} & Printed Men Round Neck Blue T-Shirt & 0.845 & -- \\
+    18 & \texttt{TSHFZBYYCW9U7ZDN} & Graphic Print Men Round Neck Black T-Shirt & 0.845 & 1 \\
+    19 & \texttt{TSHFPMJ2EKQXATVP} & Printed Men Round Neck Blue T-Shirt & 0.843 & -- \\
+    20 & \texttt{TSHFPYXA4NBTSZUM} & Printed Men Round Neck Black T-Shirt & 0.842 & -- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Word2Vec top 20 for query~7, \emph{women denim jacket} (82 candidates). Label is
+  the Part~2 relevance label, or -- when the product was not judged.}
+  \label{tab:w2v-q7}
+  \begin{tabular}{rlp{7.2cm}rc}
+    \toprule
+    Rank & Product ID & Title & Score & Label \\
+    \midrule
+    1 & \texttt{JCKFWC5ZKPYQ6ZGH} & Full Sleeve Solid Women Denim Jacket & 0.885 & 1 \\
+    2 & \texttt{JCKFWC5ZQ8QVSETD} & Full Sleeve Solid Women Denim Jacket & 0.884 & 1 \\
+    3 & \texttt{JCKFWC5YW4Z3YYZX} & Full Sleeve Solid Women Denim Jacket & 0.881 & 1 \\
+    4 & \texttt{JCKF7KY3NQUGDHE2} & Full Sleeve Solid Women Denim Casual Jacket & 0.881 & 1 \\
+    5 & \texttt{JCKFXAKEY2ANHJGW} & Full Sleeve Solid Women Denim Jacket & 0.880 & 1 \\
+    6 & \texttt{JCKFWC5YGQENYT6B} & Full Sleeve Solid Women Denim Jacket & 0.879 & 1 \\
+    7 & \texttt{JCKFPEVF2XP9VH2E} & Full Sleeve Washed Women Denim Jacket & 0.876 & 1 \\
+    8 & \texttt{JCKFZ33GHPEXHFUZ} & Full Sleeve Solid Women Jacket & 0.875 & 1 \\
+    9 & \texttt{JCKFSHEZTYYPEMTJ} & Full Sleeve Solid Women Denim Jacket & 0.872 & 1 \\
+    10 & \texttt{JCKFXNVMCH9Q9GWE} & Full Sleeve Solid Women Denim Jacket & 0.872 & 1 \\
+    11 & \texttt{JCKFXNVMQMZYDZFY} & Full Sleeve Solid Women Denim Jacket & 0.870 & 1 \\
+    12 & \texttt{JCKFVDPY9QR8UKKZ} & Full Sleeve Solid Women Denim Jacket & 0.870 & 1 \\
+    13 & \texttt{JCKFYY7WKSXSSUUA} & Full Sleeve Solid Women Denim Jacket & 0.870 & 1 \\
+    14 & \texttt{JCKFXNVM5FVS294R} & Full Sleeve Solid Women Denim Jacket & 0.870 & 1 \\
+    15 & \texttt{JCKFXNVMUPHVEQ7F} & Full Sleeve Solid Women Denim Jacket & 0.870 & 1 \\
+    16 & \texttt{JCKFXNVMGBYGXKHN} & Full Sleeve Solid Women Denim Jacket & 0.868 & 1 \\
+    17 & \texttt{JCKFVDPXFVQBGME7} & Full Sleeve Solid Women Denim Jacket & 0.867 & 1 \\
+    18 & \texttt{JCKFVY23EZSC7AV4} & Full Sleeve Solid Women Jacket & 0.861 & 0 \\
+    19 & \texttt{JCKFVEUDNF3J7CWV} & Full Sleeve Solid Women Jacket & 0.859 & 1 \\
+    20 & \texttt{JCKFVY23CAGGCBFM} & Full Sleeve Solid Women Jacket & 0.859 & 0 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\clearpage
 
 \section{Ranking comparison}
 % Explain TF-IDF and BM25 rank changes and the pros and cons of both.
 % Discuss the effects and trade-offs of Word2Vec.
 % If reporting metrics from Part 2 labels, explain the judgement pool and
 % report coverage across rankers.
+
+All the rankers order exactly the same candidates, so the only thing that changes between them is the order. To compare them we look at two things: how many products of the TF-IDF top 20 each ranker keeps in its own top 20, and the Part~2 metrics on the products that have a label.
+
+It is important to note that our labels come from the TF-IDF top 40 of each query. A ranker that moves far away from TF-IDF brings up products that nobody judged, so its metrics only describe the few judged products it still has in its top 20. That is why \cref{tab:rankers} also shows how much of each top 20 is judged. For Q3, Q5 and Q7 every product in every top 20 is judged, so these are the queries where the comparison is fair. For Q4 and Q6 only 15 to 45\% of the top 20 of BM25, the custom score and Word2Vec is judged, so the metrics there have to be read with care.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Products of the TF-IDF top 20 that each ranker keeps in its own top 20,
+  and the averages over the five test queries of the share of the top 20 that is
+  judged and the Part~2 metrics on the judged products.}
+  \label{tab:rankers}
+  \begin{tabular}{lrrrrrrrrr}
+    \toprule
+    & \multicolumn{5}{c}{Overlap with TF-IDF top 20} & \multicolumn{4}{c}{Average} \\
+    \cmidrule(lr){2-6} \cmidrule(lr){7-10}
+    Ranker & Q3 & Q4 & Q5 & Q6 & Q7 & Judged & P@20 & AP & NDCG@20 \\
+    \midrule
+    TF-IDF & 20 & 20 & 20 & 20 & 20 & 1.00 & 0.88 & 0.964 & 0.973 \\
+    BM25 & 16 & 5 & 19 & 5 & 17 & 0.76 & 0.90 & 0.990 & 0.998 \\
+    Custom score & 11 & 2 & 17 & 5 & 15 & 0.70 & 0.90 & 0.988 & 0.998 \\
+    Word2Vec & 13 & 4 & 20 & 2 & 16 & 0.70 & 0.86 & 0.909 & 0.940 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{TF-IDF against BM25}
+
+The TF-IDF and BM25 rankings don't exactly overlap, and how much they differ depends on the query. For the specific queries they mostly agree: BM25 keeps 16, 19 and 17 of the TF-IDF top 20 for Q3, Q5 and Q7. For the broad ones, Q4 (673 candidates) and Q6 (165), it keeps only 5.
+
+The reason is how each one deals with the length of a product. TF-IDF with cosine similarity divides by the length of the whole product vector, where every term counts and not only the query terms. So short products, where the query words are a big part of the text, win. In Q4 the TF-IDF top 10 have between 23 and 40 terms, while the median candidate has 83. BM25 instead compares the length with the average product (46 terms), and only partly ($b = 0.75$), and it rewards products that repeat the query terms, up to a limit. Its first result for Q4 mentions \emph{polo} 4 times and \emph{tshirt} 3 times, while the first TF-IDF result mentions them 3 times and once. In Q6 BM25 even brings up products of 73 to 84 terms that mention \emph{puma} up to 5 times.
+
+The clearest example is Q4. The two slim-fit polos that we judged not relevant (the query asks for a regular fit) are 3rd and 11th with TF-IDF, and fall to 57th and 97th with BM25, so the AP of Q4 goes from 0.905 to 0.985. On the fully judged queries BM25 is equal or slightly better: the AP of Q5 goes from 0.923 to 0.965, Q7 from 0.991 to 1.000, and Q3 is 1.000 with both.
+
+\paragraph{Pros and cons.} TF-IDF is simple, has no parameters to choose and is what we already used in the practical labs and Part~2. However, it favours short products, and a repeated word keeps adding to the score (the logarithm only slows it down). BM25 limits what a repeated word can add, treats length relative to the average product, and is the usual baseline of real search engines. However, it has two parameters, $k_1$ and $b$, that we did not tune (we use the usual defaults), and its scores have no fixed scale, which is why the custom score divides them by the best score of each query.
+
+\subsection{Word2Vec}
+
+Word2Vec is the weakest ranker in our tests, with an average AP of 0.909, below even TF-IDF. Its worst query is Q5 (AP 0.660), where two t-shirts come 2nd and 3rd (\cref{tab:w2v-q5}). The reason is the averaging: \emph{jogger} is one of four query words and one of dozens of words in each product, so a t-shirt whose text talks about a slim fit for men ends up with almost the same average vector as a jogger. For the same reason the scores are very close (for Q4 they go from 0.946 to 0.942), and very small differences decide the order.
+
+It is also the ranker that costs the most: the model takes about a minute to train, and because it is trained only on our catalogue, many words have noisy neighbours. We also saw that, even with a fixed seed, it gives slightly different scores on different computers (because of different maths libraries), which changes a few positions. Finally, its main advantage, finding products that use related words instead of the exact ones, cannot show here: the AND matching has already removed every product that does not contain all the query words.
 
 \subsection{Custom score against BM25}
 \label{sec:custom-comparison}
@@ -198,7 +471,32 @@ outside the top 20.
 % Propose a representation and justify its pros and cons relative to averaged
 % Word2Vec. Consider Doc2Vec and sentence embeddings.
 
+Our results show the two main problems of averaged Word2Vec. First, the average treats every word the same, so the one word that defines a query (\emph{jogger} in Q5) gets lost among the common ones, and a t-shirt ends up looking like a jogger. Second, our model only learns from our catalogue, which is too small to give reliable meanings to many words. We see three ways to do better, from the simplest to the one we think is best.
+
+\paragraph{Weighted average of word vectors.} The smallest change is to keep Word2Vec but weight each word by its IDF when averaging, so rare words like \emph{jogger} or \emph{kurta} count more than \emph{men} or \emph{fit}. It costs almost nothing, since we already have the IDF of every term. However, it still ignores the order of the words, and it does not fix the small training corpus.
+
+\paragraph{Doc2Vec.} Doc2Vec learns a vector for each document during training, together with the word vectors, instead of averaging the word vectors afterwards. This way the document vector can keep some information that an average loses, such as which words appear together. However, a new product has no vector until the model is trained again (or an extra inference step is run), it has more settings to tune than Word2Vec, and it would still learn only from our small catalogue. On a catalogue where most products are described with the same few words, we do not expect it to improve much.
+
+\paragraph{Sentence embeddings.} Sentence encoders such as Sentence-BERT (for example the small \texttt{all-MiniLM-L6-v2} model) are language models already trained on a very large amount of text, which turn a whole sentence into one vector. They use the context of each word, so \emph{slim} in \emph{slim fit jogger} is not read the same as in a sentence about a slim phone, and they already know that \emph{sweater} and \emph{sweatshirt} or \emph{joggers} and \emph{track pants} are close, which solves our problem of the small corpus. However, they are much slower than Word2Vec to compute for the whole catalogue (although product vectors only need to be computed once and saved), their vectors are hard to interpret, and they only read a limited amount of text (256 word pieces for \texttt{all-MiniLM-L6-v2}), so long descriptions would be cut. They should also be fed the original text rather than our stemmed terms, since they were trained on normal sentences.
+
+For our search engine we think a sentence encoder is the best option, applied to the title and the product details, which hold most of the information about a product. It is important to note, though, that with AND matching any representation can only reorder the candidates. Its real benefit would come from using it to find candidates too, so that a search for \emph{sweater} could also return sweatshirts.
+
 \section{Conclusion}
 % Summarize the observed ranking differences and which methods suited the queries.
 
+In this part we compared four ways of ordering the same candidates: TF-IDF with cosine similarity, BM25, our own custom score and Word2Vec with cosine similarity. Since AND matching decides which products are returned, the rankers can only change the order, and how much they change it depends on the query. For specific queries with few candidates (Q3, Q5 and Q7) all of them give similar top 20 lists. For broad queries with many candidates (Q4 and Q6) they disagree a lot, and BM25 or the custom score keep only 2 to 5 of the TF-IDF top 20.
+
+From what we could measure, BM25 is the best text ranker. It does not favour short products the way TF-IDF does, and on the fully judged queries it is equal to or better than TF-IDF (the AP of Q5 goes from 0.923 to 0.965), with an average AP over the five queries of 0.990 against 0.964. Its clearest win is Q4, where it pushes the two slim-fit polos from the top of the list down to 57th and 97th place. The custom score keeps the quality of BM25 (AP 0.988) while doing something the text alone cannot: it almost removes out-of-stock products from the top 20 (0.2 per query against 1.6) and raises the average rating of the top 20 from 3.72 to 4.00. For a shopping search we think this makes it the most useful ranker, even if its weights are chosen by hand. Word2Vec is the weakest (AP 0.909), mainly because averaging hides the word that matters and our catalogue is too small to train it well.
+
+It is important to note that our labels come from the TF-IDF top 40, so for Q4 and Q6 most of the products the other rankers bring up have never been judged, and we cannot say for sure which ranking is better there. To compare them properly we would need to judge the top 20 of every ranker. Finally, the biggest limit is still the AND matching: a better representation or a better score cannot bring back a product that lacks one query word. In Part~4, the data collected by the web app could also help us choose the weights of the custom score from what users actually click, instead of choosing them by hand.
+
+\section*{Use of AI tools}
+
+We used Claude (Anthropic), through Claude Code, to review the notebook and this report. It
+helped write and debug the code, and helped draft this report from the notebook outputs. We checked every number against the notebook outputs and reviewed and edited the
+text ourselves.
+
+
 \end{document}
+
+
