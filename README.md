@@ -22,8 +22,8 @@ While the repository is private you also need the
 to download the dataset.
 
 ```bash
-git clone https://github.com/uripont/urban-outfinders
-cd urban-outfinders
+git clone https://github.com/uripont/IRWA-2026-u213930-u213920-u215106
+cd IRWA-2026-u213930-u213920-u215106
 uv sync                              # installs Python 3.12 and all dependencies into .venv
 uv run python scripts/fetch_data.py  # downloads the catalogue and NLTK resources
 JUPYTER_PREFER_ENV_PATH=1 uv run jupyter lab   # opens the notebooks
