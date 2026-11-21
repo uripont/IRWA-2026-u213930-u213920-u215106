@@ -1,0 +1,88 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+\usepackage[nameinlink]{cleveref}
+
+\graphicspath{{figures/}}
+
+\title{Urban Outfinders\\[0.3em]\large Part 4: RAG, User Interface and Web Analytics}
+\author{Marc Mallol\and Èric Dürr\and Oriol Pont}
+\date{Information Retrieval and Web Analytics, 2026}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+% What Part 4 adds (a web app on top of the Part 3 rankers, LLM summaries,
+% usage analytics) and how the report is organised.
+% Code: https://github.com/uripont/IRWA-2026-u213930-u213920-u215106, tag
+% IRWA-2026-part-4. How to run the app (README) and which notebook produces
+% the numbers (notebooks/part_4.ipynb).
+
+\section{Search engine for the web}
+\subsection{Search function}
+% The general search(query, method, page) function in search.py and what it
+% returns. Why the custom score is the default (Part 3).
+
+\subsection{Optimisations for a real use case}
+% Relaxed matching when no product has every word (examples: a typo, a brand
+% the catalogue does not sell), the ranking cache, the Word2Vec model saved to
+% disk, and the measured speed of each method (notebook section 1.2).
+
+\subsection{Application structure}
+% Flask application factory, routes, how the search, RAG and analytics
+% modules plug into the app, GET search URLs (bookmarkable, back button).
+
+\section{User interface}
+\subsection{Search page}
+% Screenshot and what the user can choose (query, ranking method).
+
+\subsection{Results page}
+% Screenshot. The fields of each result (title, description, price and
+% discount, rating, link to the original store, image, brand, stock) and why.
+% The relaxed-matching notice and pagination.
+
+\subsection{Product page}
+% Screenshot. The other properties shown (product details, seller, category,
+% all images).
+
+\section{Retrieval-augmented generation}
+\subsection{Baseline and its weaknesses}
+% The template's prompt and model, and where it falls short, with examples.
+
+\subsection{Improvements}
+% Two or three improvements. For each: what it changes, why it should help,
+% pros and cons.
+
+\subsection{Baseline against improved}
+% Examples on the same queries (including one where no product fits) showing
+% how the improved version does better.
+
+\section{Web analytics}
+\subsection{Data collection}
+% What is collected (HTTP requests, queries, clicks, dwell time, user
+% context, sessions) and why. Anything extra and its justification.
+
+\subsection{Data model}
+% The star schema (dimensions and facts) and how it is stored (in memory).
+
+\subsection{Dashboard}
+% Key indicators, metrics and reports. Each graph with an explanation of what
+% it shows.
+
+\section{Conclusion}
+% What the web app, the RAG improvements and the analytics achieve, and the
+% main limitations.
+
+\section*{Use of AI tools}
+% As in Part 3: which tools we used and for what.
+
+\end{document}
