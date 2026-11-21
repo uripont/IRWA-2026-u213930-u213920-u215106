@@ -14,7 +14,7 @@ from functools import lru_cache
 import numpy as np
 from gensim.models import Word2Vec
 
-from fashion_search.corpus import TEXT_FIELDS, all_terms
+from fashion_search.corpus import CORPUS_PATH, TEXT_FIELDS, all_terms
 from fashion_search.ranking import SearchEngine
 
 # Training settings. One worker and a fixed seed make training reproducible.
@@ -25,6 +25,10 @@ SKIP_GRAM = 1  # skip-gram learns rare words better than CBOW on a small corpus
 EPOCHS = 10
 SEED = 42
 
+# Trained once and saved next to the processed corpus, so the web app does not
+# retrain it (about 25 seconds) every time it starts.
+MODEL_PATH = CORPUS_PATH.parent / "word2vec.model"
+
 
 def _stable_hash(text: str) -> int:
     # Gensim seeds each word's initial vector with Python's hash(), which changes
@@ -32,16 +36,19 @@ def _stable_hash(text: str) -> int:
     return zlib.crc32(text.encode())
 
 
-def train_model(engine: SearchEngine) -> Word2Vec:
-    """Train Word2Vec on the catalogue, one sentence per product text field."""
-    sentences = [
+def _sentences(engine: SearchEngine) -> list[list[str]]:
+    return [
         list(terms)
         for field in TEXT_FIELDS
         for terms in engine.corpus[f"{field}_terms"]
         if len(terms) > 0
     ]
+
+
+def train_model(engine: SearchEngine) -> Word2Vec:
+    """Train Word2Vec on the catalogue, one sentence per product text field."""
     return Word2Vec(
-        sentences,
+        _sentences(engine),
         vector_size=VECTOR_SIZE,
         window=WINDOW,
         min_count=MIN_COUNT,
@@ -55,8 +62,20 @@ def train_model(engine: SearchEngine) -> Word2Vec:
 
 @lru_cache(maxsize=4)
 def model_for(engine: SearchEngine) -> Word2Vec:
-    """The Word2Vec model of an engine's catalogue, trained once and cached."""
-    return train_model(engine)
+    """The Word2Vec model of an engine's catalogue, trained once and cached.
+
+    The model is loaded from MODEL_PATH when it was trained on as many
+    sentences as the catalogue has now, and trained and saved otherwise (so a
+    rebuilt corpus gets a new model). Delete the file to force retraining.
+    """
+    if MODEL_PATH.exists():
+        model = Word2Vec.load(str(MODEL_PATH))
+        if model.corpus_count == len(_sentences(engine)):
+            return model
+    model = train_model(engine)
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    model.save(str(MODEL_PATH))
+    return model
 
 
 def text_vector(model: Word2Vec, terms: Sequence[str]) -> np.ndarray:

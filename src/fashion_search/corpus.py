@@ -8,6 +8,7 @@ source are completed from the product URL.
 Usage: uv run python -m fashion_search.corpus
 """
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -25,7 +26,7 @@ CORPUS_PATH = DATA_DIR / "processed" / "products.parquet"
 RESULT_FIELDS = [
     "pid", "title", "description", "brand", "category", "sub_category",
     "product_details", "seller", "out_of_stock", "selling_price", "discount",
-    "actual_price", "average_rating", "url",
+    "actual_price", "average_rating", "url", "images",
 ]
 # Searchable text fields, kept apart so later ranking can weight them.
 TEXT_FIELDS = ["title", "description", "details", "brand"]
@@ -75,6 +76,16 @@ def clean_seller(seller: str | None) -> str | None:
     return _SELLER_JUNK.sub("", seller) if isinstance(seller, str) else seller
 
 
+def parse_images(value) -> list[str]:
+    """Image URLs of a product, from a list or its string form ("['https://...']")."""
+    if isinstance(value, str):
+        try:
+            value = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return []
+    return [str(url) for url in value] if isinstance(value, list) else []
+
+
 def parse_number(value) -> float | None:
     """Parse '2,999', '69% off', '3.9' or '' into a float, or None when missing."""
     match = re.search(r"\d+(?:\.\d+)?", str(value).replace(",", ""))
@@ -97,6 +108,7 @@ def build_corpus(raw: pd.DataFrame) -> pd.DataFrame:
         [{"key": k, "value": str(v)} for d in details for k, v in d.items()]
         for details in raw["product_details"]
     ]
+    df["images"] = raw["images"].map(parse_images)
     df["out_of_stock"] = raw["out_of_stock"].astype(bool)
     for field in ["selling_price", "discount", "actual_price", "average_rating"]:
         df[field] = raw[field].map(parse_number).astype("Float64")

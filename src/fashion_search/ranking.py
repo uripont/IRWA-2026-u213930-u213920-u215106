@@ -34,19 +34,23 @@ class SearchEngine:
     def rank(self, query: str) -> list[tuple[str, float]]:
         """Every product matching the query with its score, best first."""
         query_terms = build_terms(query)
-        matches = match(self.index, query_terms)
-        if not matches:
-            return []
-        query_weights = {t: _tf(query_terms.count(t)) * self.idf[t] for t in set(query_terms)}
+        scores = self.score(query_terms, match(self.index, query_terms))
+        # Ties (e.g. identical products) are broken by pid, so results are reproducible.
+        return sorted(scores.items(), key=lambda s: (-s[1], s[0]))
+
+    def score(self, query_terms: list[str], candidates: set[str]) -> dict[str, float]:
+        """TF-IDF cosine score of each candidate (which may lack some query terms)."""
+        query_weights = {
+            t: _tf(query_terms.count(t)) * self.idf[t] for t in set(query_terms) if t in self.idf
+        }
         query_norm = math.sqrt(sum(w * w for w in query_weights.values()))
 
-        scores = []
-        for pid in matches:
-            dot = sum(w * _tf(self.index[t][pid]) * self.idf[t] for t, w in query_weights.items())
+        scores = {}
+        for pid in candidates:
+            dot = sum(w * _tf(self.index[t].get(pid, 0)) * self.idf[t] for t, w in query_weights.items())
             norm = self.norms[pid] * query_norm
-            scores.append((pid, dot / norm if norm else 0.0))
-        # Ties (e.g. identical products) are broken by pid, so results are reproducible.
-        return sorted(scores, key=lambda s: (-s[1], s[0]))
+            scores[pid] = dot / norm if norm else 0.0
+        return scores
 
     def search(self, query: str, k: int | None = None) -> list[str]:
         """Pids of the top k matching products (all of them if k is None), best first."""
