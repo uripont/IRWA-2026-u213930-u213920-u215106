@@ -51,7 +51,9 @@ def create_app(searcher: Searcher | None = None, analytics: AnalyticsStore | Non
 
     @app.get("/")
     def index():
-        return render_template("index.html", methods=METHODS, method=DEFAULT_METHOD, examples=EXAMPLES)
+        # Each example with the picture of its first result (the rankings are cached).
+        examples = [(q, next((r.image for r in app.searcher.search(q).results[:1]), None)) for q in EXAMPLES]
+        return render_template("index.html", methods=METHODS, method=DEFAULT_METHOD, examples=examples)
 
     @app.get("/search")
     def search():

@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block header_search %}{% endblock %}
 {% block content %}
-<section class="home">
+<section class="hero">
+  <p class="eyebrow">Search the catalogue</p>
   <h1>Find clothes in 28,000 products</h1>
-  <form class="search-form" action="{{ url_for('search') }}" method="get" role="search">
+  <form class="hero-search" action="{{ url_for('search') }}" method="get" role="search">
     <input type="search" name="q" placeholder="e.g. women printed kurta cotton"
            aria-label="Search products" autofocus required>
     <select name="method" aria-label="Ranking">
@@ -14,10 +15,19 @@
     <button type="submit">Search</button>
   </form>
   <p class="hint">Products must contain every word you type. If none does, you get the closest matches.</p>
-  <p class="examples">Try:
-    {% for example in examples %}
-    <a href="{{ url_for('search', q=example) }}">{{ example }}</a>{{ ',' if not loop.last }}
+</section>
+
+<section class="examples">
+  <h2 class="section-title">Try one of these</h2>
+  <ul class="tiles">
+    {% for example, image in examples %}
+    <li>
+      <a class="tile" href="{{ url_for('search', q=example) }}">
+        {% if image %}<img src="{{ image|image_size(416) }}" alt="" loading="lazy">{% endif %}
+        <span>{{ example }}</span>
+      </a>
+    </li>
     {% endfor %}
-  </p>
+  </ul>
 </section>
 {% endblock %}

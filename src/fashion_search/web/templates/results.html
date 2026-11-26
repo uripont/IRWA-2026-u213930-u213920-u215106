@@ -2,22 +2,25 @@
 {% block title %}{{ found.query }} · Urban Outfinders{% endblock %}
 {% block content %}
 <section class="results-head">
-  <form class="method-form" action="{{ url_for('search') }}" method="get">
-    <input type="hidden" name="q" value="{{ found.query }}">
-    <label>Ranking
-      <select name="method" onchange="this.form.submit()">
-        {% for key, label in methods.items() %}
-        <option value="{{ key }}" {{ 'selected' if key == method }}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <noscript><button type="submit">Apply</button></noscript>
-  </form>
-  <p class="count">
-    {{ "{:,}".format(found.total) }} product{{ '' if found.total == 1 else 's' }}
-    for <strong>{{ found.query }}</strong>
-    <span class="muted">({{ "%.0f"|format(found.elapsed_ms) }} ms)</span>
-  </p>
+  <p class="eyebrow">Search results</p>
+  <h1>{{ found.query }}</h1>
+  <div class="toolbar">
+    <p class="count">
+      {{ "{:,}".format(found.total) }} product{{ '' if found.total == 1 else 's' }}
+      <span class="muted">· {{ "%.0f"|format(found.elapsed_ms) }} ms</span>
+    </p>
+    <form class="method-form" action="{{ url_for('search') }}" method="get">
+      <input type="hidden" name="q" value="{{ found.query }}">
+      <label>Ranking
+        <select name="method" onchange="this.form.submit()">
+          {% for key, label in methods.items() %}
+          <option value="{{ key }}" {{ 'selected' if key == method }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <noscript><button type="submit">Apply</button></noscript>
+    </form>
+  </div>
   {% if found.relaxed and found.total %}
   <p class="notice">
     No product contains all {{ found.terms|unique|list|length }} words, so these contain
@@ -29,7 +32,7 @@
 
 {% if summary_enabled %}
 <section class="summary" id="summary" aria-live="polite">
-  <h2>Summary</h2>
+  <h2>Our pick <span>AI summary of these results</span></h2>
   <p class="summary-text muted">Writing a summary of these results…</p>
 </section>
 <script>
@@ -49,27 +52,26 @@
 <p class="empty">No products found. Try fewer or different words.</p>
 {% endif %}
 
-<ol class="results" start="{{ (found.page - 1) * found.per_page + 1 }}">
+<ol class="grid" start="{{ (found.page - 1) * found.per_page + 1 }}">
   {% for r in found.results %}
-  <li class="result">
-    <a class="thumb" href="{{ url_for('product', pid=r.pid, qid=query_id, rank=r.rank) }}">
+  {% set link = url_for('product', pid=r.pid, qid=query_id, rank=r.rank) %}
+  <li class="card">
+    <a class="card-image" href="{{ link }}" tabindex="-1">
       {% if r.image %}<img src="{{ r.image|image_size(416) }}" alt="" loading="lazy">{% endif %}
+      {% if r.out_of_stock %}<span class="tag">Out of stock</span>
+      {% elif r.discount and r.discount >= 50 %}<span class="tag sale">{{ "%.0f"|format(r.discount) }}% off</span>{% endif %}
     </a>
-    <div class="info">
-      <a class="title" href="{{ url_for('product', pid=r.pid, qid=query_id, rank=r.rank) }}">{{ r.title }}</a>
-      <p class="meta">
-        {% if r.brand %}<span>{{ r.brand }}</span>{% endif %}
-        {% if r.sub_category %}<span class="muted">{{ r.sub_category }}</span>{% endif %}
-        {% if r.out_of_stock %}<span class="badge">Out of stock</span>{% endif %}
-      </p>
+    <div class="card-body">
+      {% if r.brand %}<p class="card-brand">{{ r.brand }}</p>{% endif %}
+      <a class="card-title" href="{{ link }}">{{ r.title }}</a>
       <p class="price">
-        <strong>{{ r.selling_price|inr }}</strong>
-        {% if r.actual_price and r.actual_price != r.selling_price %}<s class="muted">{{ r.actual_price|inr }}</s>{% endif %}
+        <strong class="{{ 'sale' if r.discount }}">{{ r.selling_price|inr }}</strong>
+        {% if r.actual_price and r.actual_price != r.selling_price %}<s>{{ r.actual_price|inr }}</s>{% endif %}
         {% if r.discount %}<span class="discount">{{ "%.0f"|format(r.discount) }}% off</span>{% endif %}
-        {% if r.average_rating %}<span class="rating">★ {{ "%.1f"|format(r.average_rating) }}</span>{% endif %}
       </p>
-      {% if r.description %}<p class="description">{{ r.description|truncate(220) }}</p>{% endif %}
-      {% if r.url %}<a class="external" href="{{ r.url }}" target="_blank" rel="noopener">View in the original store ↗</a>{% endif %}
+      {% if r.average_rating %}<p class="rating">★ {{ "%.1f"|format(r.average_rating) }}</p>{% endif %}
+      {% if r.description %}<p class="card-description">{{ r.description|truncate(160) }}</p>{% endif %}
+      {% if r.url %}<a class="external" href="{{ r.url }}" target="_blank" rel="noopener">View in store ↗</a>{% endif %}
     </div>
   </li>
   {% endfor %}
@@ -78,11 +80,11 @@
 {% if found.pages > 1 %}
 <nav class="pagination" aria-label="Pages">
   {% if found.page > 1 %}
-  <a href="{{ url_for('search', q=found.query, method=found.method, page=found.page - 1) }}">← Previous</a>
+  <a class="page-button" href="{{ url_for('search', q=found.query, method=found.method, page=found.page - 1) }}">← Previous</a>
   {% endif %}
   <span>Page {{ found.page }} of {{ found.pages }}</span>
   {% if found.page < found.pages %}
-  <a href="{{ url_for('search', q=found.query, method=found.method, page=found.page + 1) }}">Next →</a>
+  <a class="page-button" href="{{ url_for('search', q=found.query, method=found.method, page=found.page + 1) }}">Next →</a>
   {% endif %}
 </nav>
 {% endif %}
