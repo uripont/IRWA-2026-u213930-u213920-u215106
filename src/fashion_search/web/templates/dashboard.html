@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Urban Outfinders{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+{# TODO(analytics): key indicators, graphs of how people use the site and the
+   search engine, and an explanation of each graph. #}
+<dl class="kpis">
+  {% for name, value in summary.items() %}
+  <div><dt>{{ name|capitalize }}</dt><dd>{{ "{:,}".format(value) }}</dd></div>
+  {% endfor %}
+</dl>
+<p class="muted">Placeholder: only the counts collected so far (in memory, since the app started).</p>
+{% endblock %}

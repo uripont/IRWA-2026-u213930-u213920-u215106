@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Urban Outfinders{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{{ url_for('index') }}">Urban Outfinders</a>
+    {% block header_search %}
+    <form class="search-form compact" action="{{ url_for('search') }}" method="get" role="search">
+      <input type="search" name="q" value="{{ found.query if found else '' }}"
+             placeholder="Search products" aria-label="Search products" required>
+      <button type="submit">Search</button>
+    </form>
+    {% endblock %}
+    <nav><a href="{{ url_for('dashboard') }}">Dashboard</a></nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    Information Retrieval and Web Analytics, 2026. Product data from an Indian fashion e-commerce catalogue.
+  </footer>
+</body>
+</html>

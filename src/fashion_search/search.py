@@ -148,7 +148,7 @@ class Searcher:
         if pid not in self.products.index:
             return None
         record = self.products.loc[pid, RESULT_FIELDS].to_dict()
-        return {k: None if pd.api.types.is_scalar(v) and pd.isna(v) else v for k, v in record.items()}
+        return {k: _plain(v) for k, v in record.items()}
 
     def _rank(self, terms: tuple[str, ...], method: str) -> tuple[list[tuple[str, float]], int | None, tuple[str, ...]]:
         """All matching (pid, score) pairs best first, with how the candidates were matched.
@@ -197,6 +197,13 @@ class Searcher:
             url=_text(p["url"]),
             image=images[0] if images is not None and len(images) else None,
         )
+
+
+def _plain(value):
+    """A corpus value for a template: None when missing, a list instead of an array."""
+    if getattr(value, "ndim", 0) > 0:  # numpy arrays (images, product details), not scalars
+        return value.tolist()
+    return None if pd.api.types.is_scalar(value) and pd.isna(value) else value
 
 
 def _number(value) -> float | None:

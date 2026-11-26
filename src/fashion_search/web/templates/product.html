@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ product.title }} · Urban Outfinders{% endblock %}
+{% block content %}
+{% if back %}<a class="back" href="{{ back }}">← Back to results</a>{% endif %}
+<article class="product">
+  <div class="gallery">
+    {% if product.images %}
+    <img class="main-image" src="{{ product.images[0]|image_size(832) }}" alt="{{ product.title }}">
+    {% if product.images|length > 1 %}
+    <div class="thumbs">
+      {% for image in product.images[1:] %}
+      <a href="{{ image|image_size(832) }}" target="_blank" rel="noopener"><img src="{{ image|image_size(256) }}" alt="" loading="lazy"></a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="no-image">No image</div>
+    {% endif %}
+  </div>
+  <div class="details">
+    <h1>{{ product.title }}</h1>
+    <p class="meta">
+      {% if product.brand %}<span>{{ product.brand }}</span>{% endif %}
+      {% if product.out_of_stock %}<span class="badge">Out of stock</span>{% else %}<span class="in-stock">In stock</span>{% endif %}
+    </p>
+    <p class="price large">
+      <strong>{{ product.selling_price|inr }}</strong>
+      {% if product.actual_price and product.actual_price != product.selling_price %}<s class="muted">{{ product.actual_price|inr }}</s>{% endif %}
+      {% if product.discount %}<span class="discount">{{ "%.0f"|format(product.discount) }}% off</span>{% endif %}
+    </p>
+    {% if product.average_rating %}
+    <p class="rating">★ {{ "%.1f"|format(product.average_rating) }} average rating</p>
+    {% endif %}
+    {% if product.description %}<p class="description">{{ product.description }}</p>{% endif %}
+
+    <table class="specs">
+      <tbody>
+        {% for detail in product.product_details %}
+        <tr><th>{{ detail.key }}</th><td>{{ detail.value }}</td></tr>
+        {% endfor %}
+        <tr><th>Category</th><td>{{ product.category }}{% if product.sub_category %} › {{ product.sub_category }}{% endif %}</td></tr>
+        {% if product.seller %}<tr><th>Seller</th><td>{{ product.seller }}</td></tr>{% endif %}
+        <tr><th>Product ID</th><td><code>{{ product.pid }}</code></td></tr>
+      </tbody>
+    </table>
+    {% if product.url %}<a class="button" href="{{ product.url }}" target="_blank" rel="noopener">View in the original store ↗</a>{% endif %}
+  </div>
+</article>
+{# TODO(analytics): dwell time, e.g. send the time spent here with navigator.sendBeacon on "pagehide". #}
+{% endblock %}

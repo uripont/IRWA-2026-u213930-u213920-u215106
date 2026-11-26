@@ -1,8 +1,8 @@
 """Usage data of the search engine, kept in memory.
 
-The web app will call the `log_*` methods: one request row per HTTP request,
-one query row per results page shown and one click row per product opened
-from a results page. Rows are plain dataclasses in lists, so the dashboard and the
+The web app (fashion_search.web) calls the `log_*` methods: one request row
+per page request, one query row per results page shown and one click row per
+product page opened (with the query and rank when it came from a results page). Rows are plain dataclasses in lists, so the dashboard and the
 notebook can turn them into DataFrames (`AnalyticsStore.table`).
 
 This is the starting point of the analytics workstream. What the brief still
