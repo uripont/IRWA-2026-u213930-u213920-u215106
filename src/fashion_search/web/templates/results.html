@@ -54,10 +54,11 @@
       const [, label, value] = line.match(/^([^:]{1,30}):\s*(.*)$/) || [null, null, line];
       const pid = (value.match(/\b[A-Z0-9]{16}\b/) || []).find(p => shown.has(p));
       const row = element("p", "pick-line");
-      if (label) row.append(element("span", "pick-label", label.replace(/\s*\(optional\)/i, "")));
+      // Labels for the products only ("Why" would only repeat what the text already says).
+      if (label && !/^why$/i.test(label.trim())) row.append(element("span", "pick-label", label.replace(/\s*\(optional\)/i, "")));
       if (pid) {
         const card = shown.get(pid);
-        const link = element("a", "pick-product", value.replace(pid, "").trim() || card.querySelector(".card-title").textContent);
+        const link = element("a", "pick-product", value.replace(pid, "").replace(/^\s*(PID)?\s*[:–-]?\s*/, "").trim() || card.querySelector(".card-title").textContent);
         link.href = card.querySelector(".card-title").href;
         row.append(link, element("span", "pick-price", card.querySelector(".price strong").textContent));
         picked = picked || card;

@@ -15,9 +15,10 @@ from fashion_search import rag
 from fashion_search.analytics import AnalyticsStore
 from fashion_search.search import DEFAULT_METHOD, Searcher
 
-# The Part 2 test queries, offered as examples on the search page.
-EXAMPLES = ["women printed kurta cotton", "men polo tshirt regular fit", "slim fit jogger men",
-            "puma men tshirt", "women denim jacket"]
+# Popular searches offered on the search page, each one with a good "Our pick" from the LLM
+# (three Part 2 test queries, plus two that replace the ones the LLM finds no good product for).
+EXAMPLES = ["women printed kurta cotton", "men polo tshirt regular fit", "blue jeans",
+            "men track pants", "women denim jacket"]
 PAGES = {"index", "search", "product", "dashboard"}  # page views worth logging (not static files)
 
 

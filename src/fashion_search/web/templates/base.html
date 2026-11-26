@@ -57,13 +57,23 @@
         if (images.length < 2) continue;
         const target = img.closest("a") || img;
         let timer, shown = 0;
-        const next = () => { shown = (shown + 1) % images.length; img.src = images[shown]; };
+        // Cross-fade: the next picture fades in on a copy above the current one, which then takes its place.
+        const fadeTo = src => {
+          target.querySelectorAll(".fade-layer").forEach(layer => { img.src = layer.src; layer.remove(); });
+          const layer = Object.assign(img.cloneNode(), {className: "fade-layer", src});
+          img.after(layer);
+          layer.decode().catch(() => {}).then(() => {
+            requestAnimationFrame(() => layer.classList.add("shown"));
+            setTimeout(() => { img.src = src; layer.remove(); }, 450);
+          });
+        };
+        const next = () => { shown = (shown + 1) % images.length; fadeTo(images[shown]); };
         target.addEventListener("mouseenter", () => {
           images.forEach(src => { new Image().src = src; });  // preload, so the rotation does not flicker
           next();
-          timer = setInterval(next, 1200);
+          timer = setInterval(next, 1400);
         });
-        target.addEventListener("mouseleave", () => { clearInterval(timer); shown = 0; img.src = images[0]; });
+        target.addEventListener("mouseleave", () => { clearInterval(timer); shown = 0; fadeTo(images[0]); });
       }
     }
   </script>
