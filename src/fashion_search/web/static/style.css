@@ -1,5 +1,5 @@
 /* Urban Outfinders: an editorial e-commerce look (white space, black type,
-   uppercase labels, image-first product grid). Mobile first, then wider screens. */
+   large uppercase titles, image-first product grid). Mobile first, then wider screens. */
 
 :root {
   --ink: #111;
@@ -13,6 +13,7 @@
 }
 
 * { box-sizing: border-box; }
+html { scrollbar-gutter: stable; }  /* the header does not shift when a page needs a scrollbar */
 body {
   margin: 0;
   min-height: 100vh;
@@ -34,12 +35,7 @@ input, select, button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .hero-search input:focus { outline: 2px solid var(--ink); outline-offset: -2px; }
 
-.eyebrow, .card-brand, .site-nav a, .accordion summary, .tag, .strip {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 11px;
-  font-weight: 600;
-}
+.site-nav a, .accordion summary, .tag, .strip { font-size: 13px; font-weight: 600; }
 
 /* Strip, header and footer */
 .strip { margin: 0; padding: 8px var(--gutter); background: var(--ink); color: #fff; text-align: center; }
@@ -75,7 +71,7 @@ input, select, button { font: inherit; color: inherit; }
 .footer-about { grid-column: 1 / -1; }
 .footer-about p { margin: 0 0 8px; max-width: 36ch; }
 .footer-brand { color: #fff; text-transform: uppercase; font-weight: 800; letter-spacing: -0.02em; font-size: 20px; }
-.site-footer h2 { margin: 0 0 12px; color: #fff; text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; font-weight: 600; }
+.site-footer h2 { margin: 0 0 12px; color: #fff; font-size: 14px; font-weight: 600; }
 .site-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .site-footer a { color: #b5b5b5; text-decoration: none; }
 .site-footer a:hover { color: #fff; text-decoration: underline; }
@@ -89,9 +85,7 @@ button, .button, .page-button {
   background: var(--ink);
   color: #fff;
   text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -114,13 +108,13 @@ select { padding: 8px 10px; border: 1px solid var(--line); background: #fff; bor
 .tile span {
   position: absolute; left: 8px; right: 8px; bottom: 8px;
   padding: 8px 10px; background: #fff;
-  font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 13px; font-weight: 600;
   transition: opacity 0.2s ease;
 }
 .tile:hover span { opacity: 0; }
 
 /* Results */
-.results-head { padding: 24px 0 8px; }
+.results-head { padding: 28px 0 8px; }
 .results-head h1 { margin: 4px 0 12px; font-size: clamp(26px, 5vw, 44px); line-height: 1.05; text-transform: uppercase; letter-spacing: -0.02em; font-weight: 800; overflow-wrap: anywhere; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .toolbar .count { margin: 0; }
@@ -131,10 +125,11 @@ select { padding: 8px 10px; border: 1px solid var(--line); background: #fff; bor
 .pick.no-picture .pick-image { display: none; }
 .pick-image { aspect-ratio: 3 / 4; background: var(--soft); align-self: start; }
 .pick-image img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; }
-.pick .eyebrow { margin: 0 0 8px; }
-.pick-note { margin-left: 8px; color: var(--muted); font-weight: 400; letter-spacing: 0.06em; }
+.pick-title { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
+.pick-note { margin-left: 6px; color: var(--muted); font-size: 13px; font-weight: 400; }
 .pick-line { margin: 0 0 8px; font-size: 14px; }
-.pick-label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
+.pick-label { color: var(--muted); }
+.pick-line:first-child .pick-product { font-size: 16px; }
 .pick-product { font-weight: 600; text-decoration: none; }
 .pick-product:hover { text-decoration: underline; }
 .pick-price { margin-left: 8px; color: var(--sale); font-weight: 600; }
@@ -154,7 +149,6 @@ select { padding: 8px 10px; border: 1px solid var(--line); background: #fff; bor
 .tag { position: absolute; top: 8px; left: 8px; padding: 4px 8px; background: #fff; }
 .card-body { padding-top: 10px; font-size: 13px; }
 .card-body p { margin: 2px 0; }
-.card-brand { margin: 0 0 2px; color: var(--muted); }
 .card-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-decoration: none; font-size: 14px; }
 .card-title:hover { text-decoration: underline; }
 .price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
@@ -198,7 +192,7 @@ select { padding: 8px 10px; border: 1px solid var(--line); background: #fff; bor
 /* Dashboard (the page itself belongs to the analytics work) */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .kpis div { padding: 16px; background: var(--soft); }
-.kpis dt { text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; color: var(--muted); }
+.kpis dt { font-size: 13px; color: var(--muted); }
 .kpis dd { margin: 4px 0 0; font-size: 32px; font-weight: 800; }
 
 /* Tablet and up */

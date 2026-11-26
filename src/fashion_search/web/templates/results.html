@@ -2,7 +2,6 @@
 {% block title %}{{ found.query }} · Urban Outfinders{% endblock %}
 {% block content %}
 <section class="results-head">
-  <p class="eyebrow">Search results</p>
   <h1>{{ found.query }}</h1>
   <div class="toolbar">
     <p class="count">
@@ -23,7 +22,7 @@
 <section class="pick" id="summary" aria-live="polite" aria-busy="true">
   <div class="pick-image skeleton"></div>
   <div class="pick-body">
-    <p class="eyebrow">Our pick <span class="pick-note">Written by AI from these results</span></p>
+    <h2 class="pick-title">Our pick <span class="pick-note">written by AI from these results</span></h2>
     <div class="pick-text">
       <span class="visually-hidden">Writing a summary of these results…</span>
       <span class="skeleton line" style="width: 60%"></span>
@@ -54,8 +53,9 @@
       const [, label, value] = line.match(/^([^:]{1,30}):\s*(.*)$/) || [null, null, line];
       const pid = (value.match(/\b[A-Z0-9]{16}\b/) || []).find(p => shown.has(p));
       const row = element("p", "pick-line");
-      // Labels for the products only ("Why" would only repeat what the text already says).
-      if (label && !/^why$/i.test(label.trim())) row.append(element("span", "pick-label", label.replace(/\s*\(optional\)/i, "")));
+      // The best product leads the card and the reason follows it, so only other lines keep their label.
+      const name = label ? label.replace(/\s*\(optional\)/i, "").trim() : "";
+      if (name && !/^(why|best product)$/i.test(name)) row.append(element("span", "pick-label", name + ": "));
       if (pid) {
         const card = shown.get(pid);
         const link = element("a", "pick-product", value.replace(pid, "").replace(/^\s*(PID)?\s*[:–-]?\s*/, "").trim() || card.querySelector(".card-title").textContent);
@@ -107,7 +107,6 @@
       {% if r.out_of_stock %}<span class="tag">Out of stock</span>{% endif %}
     </a>
     <div class="card-body">
-      {% if r.brand %}<p class="card-brand">{{ r.brand }}</p>{% endif %}
       <a class="card-title" href="{{ link }}">{{ r.title }}</a>
       <p class="price">
         <strong class="{{ 'sale' if r.discount }}">{{ r.selling_price|inr }}</strong>

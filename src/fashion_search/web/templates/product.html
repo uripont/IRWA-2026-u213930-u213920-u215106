@@ -15,7 +15,6 @@
     {% endfor %}
   </div>
   <div class="details">
-    {% if product.brand %}<p class="card-brand">{{ product.brand }}</p>{% endif %}
     <h1>{{ product.title }}</h1>
     <p class="price large">
       <strong class="{{ 'sale' if product.discount }}">{{ product.selling_price|inr }}</strong>
@@ -40,10 +39,11 @@
       </table>
     </details>
     <details class="accordion">
-      <summary>Seller and category</summary>
+      <summary>Brand, seller and category</summary>
       <table class="specs">
         <tbody>
           <tr><th>Category</th><td>{{ product.category }}{% if product.sub_category %} › {{ product.sub_category }}{% endif %}</td></tr>
+          {% if product.brand %}<tr><th>Brand</th><td>{{ product.brand }}</td></tr>{% endif %}
           {% if product.seller %}<tr><th>Seller</th><td>{{ product.seller }}</td></tr>{% endif %}
           <tr><th>Product ID</th><td><code>{{ product.pid }}</code></td></tr>
         </tbody>
