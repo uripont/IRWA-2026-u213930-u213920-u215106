@@ -84,9 +84,10 @@ As the statement asks, the app is built with Flask and runs on Flask's own devel
 Each visitor gets a random session identifier stored in a signed cookie, and after every page request the app logs the request, plus the query or the click when there is one, in the analytics store. Static files are not logged, so the data only describes what users actually do. The templates share a base layout with the search box in the header, so a new search can be started from any page.
 
 \section{User interface}
+\label{sec:ui}
 \subsection{Search page}
 
-The search page (\cref{fig:search}) is a single search box in the middle of the page, with a menu to choose the ranking method and a button. For this report, we kept it as simple as possible, since most users will just type and press enter, and the menu defaults to the custom score so nobody has to choose. The line below the box explains how matching works (every word, or the closest matches otherwise), so the results never come as a surprise, and the five test queries of Part~2 are offered as examples that can be clicked.
+The search page (\cref{fig:search}) is a single search box in the middle of the page, with a menu to choose the ranking method and a button. For this report, we kept it as simple as possible (\cref{app:restyle} shows a version closer to a modern e-commerce site, on the same Flask stack), since most users will just type and press enter, and the menu defaults to the custom score so nobody has to choose. The line below the box explains how matching works (every word, or the closest matches otherwise), so the results never come as a surprise, and the five test queries of Part~2 are offered as examples that can be clicked.
 
 \begin{figure}[ht]
   \centering
@@ -153,5 +154,58 @@ The product page (\cref{fig:product}) shows everything the catalogue has about a
 
 \section*{Use of AI tools}
 % As in Part 3: which tools we used and for what.
+
+The visual overhaul of \cref{app:restyle} was mostly driven by AI (Claude, through Claude Code). Once we had chosen the inspiration for it, the assistant wrote a first draft of the templates and the style sheet. It worked, but it still did not look like a real shop, so we kept critiquing it page by page (on a computer and on a phone screen) and asking for changes, over three more rounds, until we were satisfied with the visual result. Each round is a separate commit in the repository, from the first draft to the final version.
+
+\clearpage
+\appendix
+\section{Visual overhaul}
+\label{app:restyle}
+
+Once the app worked, we gave it a look closer to a modern fashion store, inspired by the Urban Outfitters website (only its layout and typography, none of its logo, pictures or text). The search engine, routes and data are the ones of \cref{sec:ui}, and the app is still plain Flask templates with one CSS file and a few lines of JavaScript, so the stack the statement asks for is unchanged. All of it lives in the templates and the style sheet, so the search, the LLM summaries and the analytics work exactly as described in the rest of the report.
+
+What we took from that kind of site is mostly an attitude: pictures first, a lot of white space, black type with large titles, and nothing on the page that only makes sense to the people who built the engine. The header (logo, search box and link to the dashboard) is the same on every page and does not move between them, so the user always knows where to search again. \Cref{fig:restyle-home,fig:restyle-results,fig:restyle-product} show it on a computer, and the end of this appendix lists the changes in detail and shows it on a phone.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=\textwidth]{restyle-home.png}
+  \caption{Search page after the visual overhaul, with the footer.}
+  \label{fig:restyle-home}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=\textwidth]{restyle-results.png}
+  \caption{Results page for \emph{women printed kurta cotton}, with the ``Our pick'' card above the products.}
+  \label{fig:restyle-results}
+\end{figure}
+
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=\textwidth]{restyle-product.png}
+  \caption{Product page after the visual overhaul (cropped).}
+  \label{fig:restyle-product}
+\end{figure}
+
+\clearpage
+The one feature we removed on purpose is the menu to choose the ranking method. It was useful for this project, to compare the rankers of Part~3 on the same query, but a real shop would never ask its customers to choose a search algorithm. So this version always ranks with the custom score, our best ranker for shopping in Part~3 (the other methods can still be chosen through the URL, for example \texttt{\&method=bm25}). For the same reason, we also removed the line that explained how matching works. The other changes are:
+\begin{itemize}
+  \item A black strip and a header that stays at the top while scrolling, with the search box on every page, and a dark footer like the ones of commercial sites.
+  \item No small labels in capitals above the entries (such as the brand above each product name), which made the pages look busy. The brand is now in the details of the product page.
+  \item On the search page, the example queries shown as picture tiles. Hovering a tile hides its label and fades through the pictures of the first results of that query. These are five popular searches that all get an ``Our pick'' (two of the Part~2 test queries, \emph{slim fit jogger men} and \emph{puma men tshirt}, get no recommendation from the baseline prompt, so we replaced them with \emph{blue jeans} and \emph{men track pants}).
+  \item Results as a grid of picture cards. Hovering a card fades to the second picture of the product, and keeps rotating through its other pictures while the mouse stays on it.
+  \item The LLM summary shown as an ``Our pick'' card, with the picture, name and price of the recommended product and of the alternative, each linked to its page (the app finds the product IDs that the LLM writes among the results). While the summary is being written, the card shows an animated loading placeholder.
+  \item On the product page, large pictures in a two-column gallery with the details next to them, and the product details and seller in sections that can be opened and closed.
+  \item A mobile-first layout (\cref{fig:restyle-phone}). On a phone, the header search moves below the logo, the cards keep two columns and the product pictures become a carousel to swipe.
+\end{itemize}
+
+\begin{figure}[!hb]
+  \centering
+  \includegraphics[width=0.24\textwidth]{restyle-phone-home.png}\hfill
+  \includegraphics[width=0.24\textwidth]{restyle-phone-results.png}\hfill
+  \includegraphics[width=0.24\textwidth]{restyle-phone-product.png}
+  \caption{Search, results and product pages on a phone screen (390 pixels wide).}
+  \label{fig:restyle-phone}
+\end{figure}
 
 \end{document}
