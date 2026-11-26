@@ -5,17 +5,28 @@ API as in the course template, writes a short recommendation from them. Each
 way of building the prompt is a *variant*, so the baseline and the improved
 versions can be compared on the same queries (see notebooks/part_4.ipynb).
 
-Set GROQ_API_KEY (and optionally GROQ_MODEL) in .env. Without a key,
-`summarize` returns None, so callers can simply leave the summary out.
+Set GROQ_API_KEY (and optionally GROQ_MODEL) in .env, which is read on import.
+Without a key, `summarize` returns None, so callers can simply leave the
+summary out. When the API refuses or fails (the free tier's rate limit, a
+wrong key, no connection), `summarize` raises `SummaryUnavailable` with a
+message that can be shown to the user. Answers are cached per prompt, so the
+same results are only sent to the API once.
 """
 
 import os
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from functools import lru_cache
+
+from dotenv import load_dotenv
 
 from fashion_search.search import Result
 
-DEFAULT_MODEL = "llama-3.1-8b-instant"  # the course template's model
+load_dotenv()
+
+# The course template used llama-3.1-8b-instant, which Groq no longer offers.
+# gpt-oss-20b is the closest small, fast general model it serves now.
+DEFAULT_MODEL = "openai/gpt-oss-20b"
 
 # The course template's prompt, unchanged.
 BASELINE_PROMPT = """
@@ -41,6 +52,14 @@ BASELINE_PROMPT = """
         - Why: ...
         - Alternative (optional): ...
     """
+
+
+TIMEOUT_S = 20  # seconds to wait for an answer before giving up
+CACHE_SIZE = 256  # answers kept in memory
+
+
+class SummaryUnavailable(Exception):
+    """The API could not give a summary. The message is meant for the user."""
 
 
 @dataclass(frozen=True)
@@ -76,18 +95,33 @@ def summarize(query: str, results: Sequence[Result], variant: str = DEFAULT_VARI
     """An LLM summary of the results for the query, or None without an API key or results."""
     if not available() or not results:
         return None
-    model = os.environ.get("GROQ_MODEL", DEFAULT_MODEL)
+    model = os.environ.get("GROQ_MODEL") or DEFAULT_MODEL
     prompt = VARIANTS[variant](query, results)
     return Summary(text=complete(prompt, model), variant=variant, model=model)
 
 
+@lru_cache(maxsize=CACHE_SIZE)  # errors are not cached, so a later call tries again
 def complete(prompt: str, model: str = DEFAULT_MODEL) -> str:
-    """Send one user message to the Groq API and return the reply's text."""
-    from groq import Groq  # imported here so the rest of the package works without it
+    """Send one user message to the Groq API and return the reply's text.
 
-    client = Groq(api_key=os.environ["GROQ_API_KEY"])
-    reply = client.chat.completions.create(
-        messages=[{"role": "user", "content": prompt}],
-        model=model,
-    )
+    Raises SummaryUnavailable when the API refuses or fails.
+    """
+    import groq  # imported here so the rest of the package works without it
+
+    client = groq.Groq(api_key=os.environ["GROQ_API_KEY"], timeout=TIMEOUT_S, max_retries=1)
+    try:
+        reply = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model=model,
+        )
+    except groq.RateLimitError as error:
+        wait = error.response.headers.get("retry-after")
+        when = f"in about {wait} seconds" if wait else "in a minute"
+        raise SummaryUnavailable(f"The summary service is busy (rate limit reached). Try again {when}.") from error
+    except groq.AuthenticationError as error:
+        raise SummaryUnavailable("The summary service rejected the API key.") from error
+    except (groq.APIConnectionError, groq.APITimeoutError) as error:
+        raise SummaryUnavailable("The summary service could not be reached.") from error
+    except groq.APIError as error:
+        raise SummaryUnavailable("The summary service failed to answer.") from error
     return reply.choices[0].message.content or ""
