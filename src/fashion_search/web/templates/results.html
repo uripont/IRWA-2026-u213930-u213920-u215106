@@ -9,17 +9,6 @@
       {{ "{:,}".format(found.total) }} product{{ '' if found.total == 1 else 's' }}
       <span class="muted">· {{ "%.0f"|format(found.elapsed_ms) }} ms</span>
     </p>
-    <form class="method-form" action="{{ url_for('search') }}" method="get">
-      <input type="hidden" name="q" value="{{ found.query }}">
-      <label>Ranking
-        <select name="method" onchange="this.form.submit()">
-          {% for key, label in methods.items() %}
-          <option value="{{ key }}" {{ 'selected' if key == method }}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <noscript><button type="submit">Apply</button></noscript>
-    </form>
   </div>
   {% if found.relaxed and found.total %}
   <p class="notice">
@@ -31,18 +20,73 @@
 </section>
 
 {% if summary_enabled %}
-<section class="summary" id="summary" aria-live="polite">
-  <h2>Our pick <span>AI summary of these results</span></h2>
-  <p class="summary-text muted">Writing a summary of these results…</p>
+<section class="pick" id="summary" aria-live="polite" aria-busy="true">
+  <div class="pick-image skeleton"></div>
+  <div class="pick-body">
+    <p class="eyebrow">Our pick <span class="pick-note">Written by AI from these results</span></p>
+    <div class="pick-text">
+      <span class="visually-hidden">Writing a summary of these results…</span>
+      <span class="skeleton line" style="width: 60%"></span>
+      <span class="skeleton line"></span>
+      <span class="skeleton line" style="width: 85%"></span>
+    </div>
+  </div>
 </section>
 <script>
+  const element = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;  // plain text: the LLM output is never parsed as HTML
+    return node;
+  };
+
+  function showSummary(text) {
+    // The products on this page, to turn the PIDs the LLM writes into pictures and links.
+    const shown = new Map([...document.querySelectorAll(".card")].map(card => [card.dataset.pid, card]));
+    const box = document.getElementById("summary");
+    const body = box.querySelector(".pick-text");
+    const image = box.querySelector(".pick-image");
+    body.replaceChildren();
+    let picked = null;
+    for (const raw of text.replaceAll("**", "").split("\n")) {
+      const line = raw.replace(/^\s*[-*•]\s*/, "").trim();
+      if (!line) continue;
+      const [, label, value] = line.match(/^([^:]{1,30}):\s*(.*)$/) || [null, null, line];
+      const pid = (value.match(/\b[A-Z0-9]{16}\b/) || []).find(p => shown.has(p));
+      const row = element("p", "pick-line");
+      if (label) row.append(element("span", "pick-label", label.replace(/\s*\(optional\)/i, "")));
+      if (pid) {
+        const card = shown.get(pid);
+        const link = element("a", "pick-product", value.replace(pid, "").trim() || card.querySelector(".card-title").textContent);
+        link.href = card.querySelector(".card-title").href;
+        row.append(link, element("span", "pick-price", card.querySelector(".price strong").textContent));
+        picked = picked || card;
+      } else {
+        row.append(element("span", "", value));
+      }
+      body.append(row);
+    }
+    image.classList.remove("skeleton");
+    const src = picked && picked.querySelector(".card-image img");
+    if (src) {
+      const link = element("a");
+      link.href = picked.querySelector(".card-title").href;
+      link.append(Object.assign(element("img"), {src: src.src, alt: ""}));
+      image.append(link);
+    } else {
+      box.classList.add("no-picture");
+    }
+    box.setAttribute("aria-busy", "false");
+  }
+
   fetch("{{ url_for('summary', q=found.query, method=found.method) }}")
     .then(response => response.json())
     .then(data => {
-      const box = document.querySelector("#summary .summary-text");
-      // Plain text (the LLM output is never parsed as HTML), without Markdown bold marks.
-      box.textContent = data.text ? data.text.replaceAll("**", "") : data.error;
-      box.classList.toggle("muted", !data.text);
+      if (data.text) return showSummary(data.text);
+      const box = document.getElementById("summary");
+      box.classList.add("no-picture");
+      box.querySelector(".pick-text").replaceChildren(element("p", "muted", data.error));
+      box.setAttribute("aria-busy", "false");
     })
     .catch(() => document.getElementById("summary").remove());
 </script>
@@ -55,11 +99,11 @@
 <ol class="grid" start="{{ (found.page - 1) * found.per_page + 1 }}">
   {% for r in found.results %}
   {% set link = url_for('product', pid=r.pid, qid=query_id, rank=r.rank) %}
-  <li class="card">
+  <li class="card" data-pid="{{ r.pid }}">
     <a class="card-image" href="{{ link }}" tabindex="-1">
-      {% if r.image %}<img src="{{ r.image|image_size(416) }}" alt="" loading="lazy">{% endif %}
-      {% if r.out_of_stock %}<span class="tag">Out of stock</span>
-      {% elif r.discount and r.discount >= 50 %}<span class="tag sale">{{ "%.0f"|format(r.discount) }}% off</span>{% endif %}
+      {% if r.image %}<img src="{{ r.image|image_size(416) }}" alt="" loading="lazy"
+           data-images='{{ images_of(r.pid)|map("image_size", 416)|list|tojson }}'>{% endif %}
+      {% if r.out_of_stock %}<span class="tag">Out of stock</span>{% endif %}
     </a>
     <div class="card-body">
       {% if r.brand %}<p class="card-brand">{{ r.brand }}</p>{% endif %}

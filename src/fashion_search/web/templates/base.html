@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <p class="strip">28,000 fashion products · ranked by our own search engine</p>
+  <p class="strip">28,000 products, ranked by our own engine</p>
   <header class="site-header">
     <a class="brand" href="{{ url_for('index') }}">Urban Outfinders</a>
     {% block header_search %}
@@ -25,8 +25,47 @@
     {% block content %}{% endblock %}
   </main>
   <footer class="site-footer">
-    <p class="footer-brand">Urban Outfinders</p>
-    <p>Information Retrieval and Web Analytics, 2026. Product data from an Indian fashion e-commerce catalogue.</p>
+    <div class="footer-columns">
+      <div class="footer-about">
+        <p class="footer-brand">Urban Outfinders</p>
+        <p>Fashion search across 28,000 products of an Indian e-commerce catalogue, ranked by our own search engine.</p>
+      </div>
+      <nav aria-label="Shop">
+        <h2>Shop</h2>
+        <ul>
+          {% for label, query in [("Kurtas", "women kurta"), ("T-shirts", "men tshirt"), ("Shirts", "shirt"),
+                                  ("Jeans", "jeans"), ("Jackets", "jacket"), ("Sweatshirts", "sweatshirt")] %}
+          <li><a href="{{ url_for('search', q=query) }}">{{ label }}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+      <nav aria-label="Project">
+        <h2>Project</h2>
+        <ul>
+          <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+          <li><a href="https://github.com/uripont/IRWA-2026-u213930-u213920-u215106">Source code</a></li>
+        </ul>
+      </nav>
+    </div>
+    <p class="footer-legal">© 2026 Urban Outfinders · Information Retrieval and Web Analytics. A university project, not a real shop.</p>
   </footer>
+  <script>
+    // With a mouse, hovering a picture shows the other pictures of the product (or the query) in turn.
+    if (matchMedia("(hover: hover)").matches) {
+      for (const img of document.querySelectorAll("img[data-images]")) {
+        const images = JSON.parse(img.dataset.images);
+        if (images.length < 2) continue;
+        const target = img.closest("a") || img;
+        let timer, shown = 0;
+        const next = () => { shown = (shown + 1) % images.length; img.src = images[shown]; };
+        target.addEventListener("mouseenter", () => {
+          images.forEach(src => { new Image().src = src; });  // preload, so the rotation does not flicker
+          next();
+          timer = setInterval(next, 1200);
+        });
+        target.addEventListener("mouseleave", () => { clearInterval(timer); shown = 0; img.src = images[0]; });
+      }
+    }
+  </script>
 </body>
 </html>

@@ -13,7 +13,7 @@ from flask import Flask, abort, jsonify, redirect, render_template, request, ses
 
 from fashion_search import rag
 from fashion_search.analytics import AnalyticsStore
-from fashion_search.search import DEFAULT_METHOD, METHODS, Searcher
+from fashion_search.search import DEFAULT_METHOD, Searcher
 
 # The Part 2 test queries, offered as examples on the search page.
 EXAMPLES = ["women printed kurta cotton", "men polo tshirt regular fit", "slim fit jogger men",
@@ -30,6 +30,7 @@ def create_app(searcher: Searcher | None = None, analytics: AnalyticsStore | Non
     app.searcher = searcher or Searcher()
     app.analytics = analytics or AnalyticsStore()
     app.jinja_env.filters.update(inr=_inr, image_size=_image_size)
+    app.jinja_env.globals.update(images_of=lambda pid: list(app.searcher.product(pid)["images"] or []))
 
     @app.before_request
     def start_session():
@@ -51,9 +52,9 @@ def create_app(searcher: Searcher | None = None, analytics: AnalyticsStore | Non
 
     @app.get("/")
     def index():
-        # Each example with the picture of its first result (the rankings are cached).
-        examples = [(q, next((r.image for r in app.searcher.search(q).results[:1]), None)) for q in EXAMPLES]
-        return render_template("index.html", methods=METHODS, method=DEFAULT_METHOD, examples=examples)
+        # Each example with the pictures of its first results (the rankings are cached).
+        examples = [(q, [r.image for r in app.searcher.search(q).results[:6] if r.image]) for q in EXAMPLES]
+        return render_template("index.html", examples=examples)
 
     @app.get("/search")
     def search():
@@ -79,8 +80,6 @@ def create_app(searcher: Searcher | None = None, analytics: AnalyticsStore | Non
             "results.html",
             found=found,
             query_id=query_id,
-            methods=METHODS,
-            method=found.method,
             summary_enabled=rag.available() and found.total > 0,
         )
 

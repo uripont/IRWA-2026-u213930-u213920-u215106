@@ -2,16 +2,10 @@
 {% block header_search %}{% endblock %}
 {% block content %}
 <section class="hero">
-  <p class="eyebrow">Search the catalogue</p>
   <h1>Find clothes in 28,000 products</h1>
   <form class="hero-search" action="{{ url_for('search') }}" method="get" role="search">
     <input type="search" name="q" placeholder="e.g. women printed kurta cotton"
            aria-label="Search products" autofocus required>
-    <select name="method" aria-label="Ranking">
-      {% for key, label in methods.items() %}
-      <option value="{{ key }}" {{ 'selected' if key == method }}>{{ label }}</option>
-      {% endfor %}
-    </select>
     <button type="submit">Search</button>
   </form>
   <p class="hint">Products must contain every word you type. If none does, you get the closest matches.</p>
@@ -20,10 +14,11 @@
 <section class="examples">
   <h2 class="section-title">Try one of these</h2>
   <ul class="tiles">
-    {% for example, image in examples %}
+    {% for example, images in examples %}
     <li>
       <a class="tile" href="{{ url_for('search', q=example) }}">
-        {% if image %}<img src="{{ image|image_size(416) }}" alt="" loading="lazy">{% endif %}
+        {% if images %}<img src="{{ images[0]|image_size(416) }}" alt="" loading="lazy"
+             data-images='{{ images|map("image_size", 416)|list|tojson }}'>{% endif %}
         <span>{{ example }}</span>
       </a>
     </li>

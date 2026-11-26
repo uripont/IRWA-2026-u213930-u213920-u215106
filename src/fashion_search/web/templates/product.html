@@ -9,7 +9,7 @@
 <article class="product">
   <div class="gallery">
     {% for image in product.images %}
-    <img src="{{ image|image_size(832) }}" alt="{{ product.title if loop.first else '' }}" {{ 'loading=lazy' if not loop.first }}>
+    <div class="shot"><img src="{{ image|image_size(832) }}" alt="{{ product.title if loop.first else '' }}" {{ 'loading=lazy' if not loop.first }}></div>
     {% else %}
     <div class="no-image">No image</div>
     {% endfor %}
