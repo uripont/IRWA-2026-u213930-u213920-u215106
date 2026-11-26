@@ -12,7 +12,9 @@ use the search.
 - [x] Text processing and exploratory analysis of the catalogue
 - [x] Inverted index, TF-IDF ranking and evaluation (P@K, R@K, MAP, MRR, NDCG)
 - [x] BM25, custom scoring and word2vec ranking
-- [ ] Web app with RAG summaries and an analytics dashboard
+- [x] Web app: search, results and product pages
+- [ ] Improved RAG summaries
+- [ ] Analytics data model and dashboard
 
 ## Getting started
 
@@ -37,8 +39,8 @@ environment. Add dependencies with `uv add <package>` (or
 the updated `pyproject.toml` and `uv.lock`.
 
 For the LLM summaries, copy `.env.example` to `.env` and add a
-[Groq API key](https://console.groq.com/keys) (free). Without one,
-`rag.summarize` returns nothing and everything else still works.
+[Groq API key](https://console.groq.com/keys) (free). Without one, the
+results page simply has no summary and everything else still works.
 
 ## Running the search engine
 
@@ -49,6 +51,17 @@ since every part reads them from `data/processed/products.parquet`:
 uv run python -m fashion_search.corpus
 ```
 
+To use the search engine in the browser, start the web app and open
+<http://127.0.0.1:8088>:
+
+```bash
+uv run python -m fashion_search.web            # add --debug to reload on code changes
+```
+
+It has a search page, a results page (with the LLM summary), a page per
+product and an analytics dashboard at `/dashboard`. Usage data is kept in
+memory, so it starts empty every time the app starts.
+
 Then run a part's notebook top to bottom (`notebooks/part_N.ipynb`). Each
 notebook produces the numbers and figures of its report.
 
@@ -57,7 +70,7 @@ notebook produces the numbers and figures of its report.
 | 1. Text processing and analysis | `part_1.ipynb` | `text.py` (pre-processing), `corpus.py` (product records) |
 | 2. Indexing and evaluation | `part_2.ipynb` | `index.py` (inverted index, AND matching), `ranking.py` (TF-IDF), `evaluation.py` (metrics) |
 | 3. Ranking and filtering | `part_3.ipynb` | `ranking.py` (TF-IDF baseline), `bm25.py`, `custom_score.py`, `word2vec.py` |
-| 4. RAG, user interface and web analytics | `part_4.ipynb` | `search.py` (search function), `rag.py` (LLM summaries), `analytics.py` (usage data); the Flask app is still to come |
+| 4. RAG, user interface and web analytics | `part_4.ipynb` | `search.py` (search function), `rag.py` (LLM summaries), `analytics.py` (usage data), `web/` (Flask app) |
 
 ## Package usage
 
